@@ -42,18 +42,15 @@ struct MenuBarView: View {
     }
 
     private func ruleText(for rule: RoutingRule) -> Text {
-        iconText(for: rule.sourceAppBundleID)
-            + Text("  \(appName(for: rule.sourceAppBundleID))   →   ")
-            + iconText(for: rule.targetBrowserBundleID)
-            + Text("  \(labelForDestination(rule))")
+        Text("\(iconImage(for: rule.sourceAppBundleID))  \(appName(for: rule.sourceAppBundleID))   →   \(iconImage(for: rule.targetBrowserBundleID))  \(labelForDestination(rule))")
     }
 
-    private func iconText(for bundleID: String) -> Text {
+    private func iconImage(for bundleID: String) -> Image {
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
             let icon = NSWorkspace.shared.icon(forFile: url.path)
-            return Text(Image(nsImage: icon))
+            return Image(nsImage: icon)
         }
-        return Text(Image(systemName: "app"))
+        return Image(systemName: "app")
     }
 
     private func appName(for bundleID: String) -> String {
