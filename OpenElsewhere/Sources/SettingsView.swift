@@ -83,6 +83,25 @@ struct SettingsView: View {
 
             Spacer()
 
+            Link(destination: URL(string: "https://buymeacoffee.com/bozka")!) {
+                HStack(spacing: 6) {
+                    Image(systemName: "cup.and.saucer.fill")
+                    Text("Buy Me a Coffee")
+                }
+                .font(.caption.weight(.medium))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
+                )
+            }
+            .foregroundStyle(colorScheme == .dark ? .white : .primary)
+
             Toggle("", isOn: $routingEngine.isEnabled)
                 .toggleStyle(.switch)
                 .labelsHidden()

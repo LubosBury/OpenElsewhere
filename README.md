@@ -2,6 +2,8 @@
 
 > Route links from specific macOS apps to the browser you actually want to use them in.
 
+<a href="https://buymeacoffee.com/bozka"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"></a>
+
 macOS lets you pick exactly **one** default browser. OpenElsewhere sits between that choice and the apps that open links, so you can say:
 
 - "Links from Slack → open in **Arc** (Work space)"
