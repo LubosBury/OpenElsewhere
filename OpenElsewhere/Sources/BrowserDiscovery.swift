@@ -15,8 +15,11 @@ class BrowserDiscovery {
                       let bundleID = bundle.bundleIdentifier,
                       bundleID.lowercased() != ownBundleID.lowercased() else { return nil }
                 let name = FileManager.default.displayName(atPath: url.path)
+                // Note: NSWorkspace.icon(forFile:) returns a shared NSImage.
+                // Do NOT mutate its `.size` — that would affect every other
+                // caller holding the same cached instance. Let SwiftUI frame
+                // the icon at the call site instead.
                 let icon = NSWorkspace.shared.icon(forFile: url.path)
-                icon.size = NSSize(width: 32, height: 32)
                 return AppInfo(bundleID: bundleID, name: name, icon: icon)
             }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -44,8 +47,8 @@ class BrowserDiscovery {
                       let bundleID = bundle.bundleIdentifier else { continue }
 
                 let name = FileManager.default.displayName(atPath: fileURL.path)
+                // See note above: do not mutate `.size` on a shared NSImage.
                 let icon = NSWorkspace.shared.icon(forFile: fileURL.path)
-                icon.size = NSSize(width: 32, height: 32)
 
                 if apps[bundleID] == nil {
                     apps[bundleID] = AppInfo(bundleID: bundleID, name: name, icon: icon)
