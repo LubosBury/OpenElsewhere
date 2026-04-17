@@ -1,6 +1,12 @@
 import AppKit
 import Foundation
 
+/// `NSApplicationDelegate` is itself `@MainActor`-isolated in modern SDKs; the
+/// explicit annotation here makes the isolation of our own methods obvious to
+/// the reader and lets us call `@MainActor`-isolated `RoutingEngine` members
+/// directly. Apple Events registered via `NSAppleEventManager` are delivered
+/// on the main run loop, so the contract holds at runtime.
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -12,6 +18,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func handleGetURL(event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
+        // NSAppleEventManager dispatches on the main thread; assert the
+        // isolation so the `@MainActor`-isolated RoutingEngine singleton is
+        // callable from this @objc entry point without an async hop.
+        MainActor.assumeIsolated {
+            dispatch(event: event)
+        }
+    }
+
+    private func dispatch(event: NSAppleEventDescriptor) {
         guard let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
               let url = URL(string: urlString) else { return }
 
