@@ -26,6 +26,26 @@ import Foundation
 ///
 /// - **Safari / unknown**: defer to LaunchServices (`open`). No profile CLI.
 enum BrowserLauncher {
+
+    /// UserDefaults key set to `true` when macOS blocks an automation-event
+    /// with `errAEEventNotPermitted` (-1743). `SettingsView` observes this
+    /// key to show a one-click remediation banner.
+    static let automationDeniedDefaultsKey = "automationPermissionDenied"
+
+    /// AppleScript error code returned when the user has denied (or not yet
+    /// granted) automation permission in Privacy settings.
+    private static let errAEEventNotPermitted = -1743
+
+    /// Scripting targets for the single-instance browsers we route through
+    /// AppleScript. Hardcoding these defends against a malicious app that
+    /// registers a conflicting bundle ID with a hostile `CFBundleName`: the
+    /// name is never read from disk, only sourced from this trusted map.
+    private static let knownScriptingNames: [String: String] = [
+        "company.thebrowser.Browser": "Arc",
+        "company.thebrowser.dia": "Dia",
+        "com.thebrowser.dia": "Dia"
+    ]
+
     static func open(_ url: URL, inBrowser bundleID: String, profileDirectory: String? = nil) {
         guard let browserAppURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
             NSWorkspace.shared.open(url)
@@ -83,13 +103,8 @@ enum BrowserLauncher {
     private static func isStrictSingleInstance(bundleID: String, appURL: URL) -> Bool {
         // Explicit allow-list — Arc and Dia both exit with a modal alert if a
         // second binary instance starts, even though they don't set the
-        // Info.plist flag.
-        let known: Set<String> = [
-            "company.thebrowser.Browser",   // Arc
-            "company.thebrowser.dia",       // Dia
-            "com.thebrowser.dia",           // Dia (alternate bundle ID)
-        ]
-        if known.contains(bundleID) { return true }
+        // Info.plist flag. This matches `knownScriptingNames` above.
+        if knownScriptingNames[bundleID] != nil { return true }
 
         if let bundle = Bundle(url: appURL),
            let prohibit = bundle.object(forInfoDictionaryKey: "LSMultipleInstancesProhibited") as? Bool,
@@ -111,6 +126,24 @@ enum BrowserLauncher {
         return ["-P", profile]
     }
 
+    // MARK: - AppleScript helpers
+
+    /// Strip ASCII control characters (C0 + DEL) from a string before
+    /// embedding it in an AppleScript literal. Foundation will percent-encode
+    /// control chars in a normal `URL`, but we filter defensively in case a
+    /// malformed URL reaches us or a future code path passes untrusted text.
+    /// After filtering, we escape the two AppleScript string-literal
+    /// metacharacters: backslash and double-quote.
+    private static func sanitizeForAppleScriptLiteral(_ value: String) -> String {
+        let filtered = String(value.unicodeScalars.filter { scalar in
+            let v = scalar.value
+            return v >= 0x20 && v != 0x7F
+        })
+        return filtered
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+    }
+
     // MARK: - Launch strategies
 
     /// Run the browser's binary directly. Suitable for browsers whose binary
@@ -130,6 +163,10 @@ enum BrowserLauncher {
         let process = Process()
         process.executableURL = exec
         process.arguments = processArgs
+        // Detach stdio — we never want the browser's stdout/stderr to pipe
+        // back into OpenElsewhere's file descriptors.
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
@@ -144,8 +181,8 @@ enum BrowserLauncher {
     /// existing window (as a new tab) instead of triggering Arc's "Little
     /// Arc" popup behavior.
     ///
-    /// Calls `fallback` if scripting fails (Arc not running, no windows, user
-    /// denied automation permission, etc.).
+    /// Calls `fallback` if scripting fails (target not running, no windows
+    /// open, user denied automation permission, etc.).
     private static func launchViaAppleScript(url: URL, bundleID: String, fallback: () -> Void) {
         // Only run if the target app is actually running — otherwise the
         // AppleEvent would force-launch it with no window, and `front window`
@@ -158,25 +195,21 @@ enum BrowserLauncher {
             return
         }
 
-        // Resolve bundle ID → app name for the AppleScript `tell application`
-        // target. Arc's scripting target is "Arc", Dia is "Dia".
-        guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID),
-              let appName = (Bundle(url: appURL)?.object(forInfoDictionaryKey: "CFBundleName") as? String)
-                ?? (Bundle(url: appURL)?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String) else {
+        // `scriptingName` is sourced from our trusted allow-list, never from
+        // an on-disk bundle's `CFBundleName`. A malicious app that registers
+        // a conflicting bundle ID cannot poison the AppleScript target.
+        guard let scriptingName = knownScriptingNames[bundleID] else {
             fallback()
             return
         }
 
-        let escapedURL = url.absoluteString
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        let escapedAppName = appName
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedURL = sanitizeForAppleScriptLiteral(url.absoluteString)
 
-        // If there are no windows, create one first so `front window` exists.
+        // `scriptingName` is an allow-listed literal (`Arc` / `Dia`), so no
+        // escaping is needed. We still embed it via interpolation for
+        // locality of reading.
         let source = """
-        tell application "\(escapedAppName)"
+        tell application "\(scriptingName)"
             activate
             if (count of windows) is 0 then
                 make new window
@@ -193,12 +226,25 @@ enum BrowserLauncher {
         }
 
         var errorInfo: NSDictionary?
-        let result = script.executeAndReturnError(&errorInfo)
-        if errorInfo != nil || result.descriptorType == 0 {
-            if let info = errorInfo {
-                print("OpenElsewhere: AppleScript for \(appName) failed: \(info)")
+        _ = script.executeAndReturnError(&errorInfo)
+
+        if let info = errorInfo {
+            let code = (info[NSAppleScript.errorNumber] as? Int) ?? 0
+            print("OpenElsewhere: AppleScript for \(scriptingName) failed (\(code)): \(info)")
+
+            // If the user has denied automation permission, set a flag that
+            // SettingsView surfaces as a remediation banner. Users otherwise
+            // silently get the "Little Arc" popup with no explanation.
+            if code == errAEEventNotPermitted {
+                UserDefaults.standard.set(true, forKey: automationDeniedDefaultsKey)
             }
             fallback()
+        } else {
+            // Clear any stale permission-denied flag on a successful run,
+            // so the banner disappears after the user grants permission.
+            if UserDefaults.standard.bool(forKey: automationDeniedDefaultsKey) {
+                UserDefaults.standard.set(false, forKey: automationDeniedDefaultsKey)
+            }
         }
     }
 
@@ -217,6 +263,8 @@ enum BrowserLauncher {
         let process = Process()
         process.executableURL = openURL
         process.arguments = args
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
