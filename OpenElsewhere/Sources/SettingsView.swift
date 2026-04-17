@@ -6,6 +6,11 @@ struct SettingsView: View {
     @State private var allApps: [AppInfo] = []
     @State private var isHandlingLinks = false
 
+    // Observes the permission-denied flag set by BrowserLauncher when macOS
+    // returns `errAEEventNotPermitted` from an AppleScript event. Updates
+    // reactively so the banner appears / disappears without a reopen.
+    @AppStorage(BrowserLauncher.automationDeniedDefaultsKey) private var automationPermissionDenied = false
+
     // Cache: bundleID -> profiles, computed on demand.
     @State private var profileCache: [String: [BrowserProfile]] = [:]
 
@@ -26,6 +31,7 @@ struct SettingsView: View {
                     headerCard
                     defaultBrowserCard
                     if !isHandlingLinks { statusBanner }
+                    if automationPermissionDenied { automationPermissionBanner }
                     rulesCard
                 }
                 .padding(24)
@@ -152,6 +158,59 @@ struct SettingsView: View {
         )
     }
 
+    // MARK: - Automation-permission banner
+
+    /// Shown when `BrowserLauncher` recorded an `errAEEventNotPermitted`
+    /// (-1743) from AppleScript. Without this banner, denying the one-time
+    /// automation prompt results in links silently falling back to
+    /// `/usr/bin/open` (which re-opens the "Little Arc" popup the AppleScript
+    /// path was designed to avoid) with no user-facing indication of why.
+    private var automationPermissionBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lock.shield.fill")
+                .font(.title2)
+                .foregroundStyle(.orange)
+                .symbolRenderingMode(.hierarchical)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Automation permission needed")
+                    .font(.subheadline.weight(.semibold))
+                Text("Allow OpenElsewhere to control Arc/Dia so links open as tabs in your existing window instead of popups.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button("Open Privacy Settings") {
+                openAutomationSettings()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .controlSize(.regular)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.orange.opacity(colorScheme == .dark ? 0.18 : 0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.orange.opacity(0.35), lineWidth: 0.5)
+        )
+    }
+
+    private func openAutomationSettings() {
+        // Deep-link into System Settings → Privacy & Security → Automation.
+        // If the URL scheme fails (e.g. future macOS changes the anchor),
+        // fall back to the generic Privacy pane.
+        let automationURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+        let fallbackURL = URL(string: "x-apple.systempreferences:com.apple.preference.security")
+        if let url = automationURL ?? fallbackURL {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     // MARK: - Rules card
 
     private var rulesCard: some View {
@@ -275,11 +334,23 @@ struct SettingsView: View {
     }
 
     private func setAsDefaultBrowser() {
-        guard let bundleID = Bundle.main.bundleIdentifier else { return }
-        LSSetDefaultHandlerForURLScheme("http" as CFString, bundleID as CFString)
-        LSSetDefaultHandlerForURLScheme("https" as CFString, bundleID as CFString)
-        // Give Launch Services a moment, then re-check.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        // Use the modern NSWorkspace API (macOS 14+). LaunchServices'
+        // LSSetDefaultHandlerForURLScheme is deprecated since macOS 12 and
+        // may silently no-op on future OS versions.
+        let appURL = Bundle.main.bundleURL
+
+        let group = DispatchGroup()
+        for scheme in ["http", "https"] {
+            group.enter()
+            NSWorkspace.shared.setDefaultApplication(at: appURL,
+                                                    toOpenURLsWithScheme: scheme) { error in
+                if let error {
+                    print("OpenElsewhere: setDefaultApplication(\(scheme)) failed: \(error.localizedDescription)")
+                }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) {
             checkIfDefault()
         }
     }
