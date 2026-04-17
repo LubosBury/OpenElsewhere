@@ -1,0 +1,57 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Xcode user-specific & build artifacts
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode build output
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj/
+# Note: We commit the generated OpenElsewhere.xcodeproj for now since the
+# project is bootstrapped by xcodegen. If you'd rather regenerate on every
+# clone, remove the next line and run `xcodegen generate` after cloning.
+!OpenElsewhere.xcodeproj/
+
+# CocoaPods (not used but just in case)
+Pods/
+
+# Carthage (not used but just in case)
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Misc
+*.orig
+*.swp
+*.bak
+.idea/
+.vscode/
