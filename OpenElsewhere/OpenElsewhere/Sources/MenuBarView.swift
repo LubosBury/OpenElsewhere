@@ -15,19 +15,13 @@ struct MenuBarView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
+                // In `.menuBarExtraStyle(.menu)` each top-level view becomes a
+                // separate NSMenuItem, so an HStack of icons/text ends up
+                // stacked vertically. Fold each rule into a single `Text`
+                // (with inline `Image` interpolation) so NSMenu renders it as
+                // one menu item on a single line.
                 ForEach(routingEngine.rules) { rule in
-                    HStack(spacing: 6) {
-                        appIcon(for: rule.sourceAppBundleID)
-                        Text(appName(for: rule.sourceAppBundleID))
-                            .lineLimit(1)
-                        Image(systemName: "arrow.right")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        appIcon(for: rule.targetBrowserBundleID)
-                        Text(labelForDestination(rule))
-                            .lineLimit(1)
-                    }
-                    .font(.caption)
+                    ruleText(for: rule)
                 }
             }
 
@@ -47,18 +41,19 @@ struct MenuBarView: View {
         .padding(4)
     }
 
-    private func appIcon(for bundleID: String) -> some View {
-        Group {
-            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: 16, height: 16)
-            } else {
-                Image(systemName: "app")
-                    .frame(width: 16, height: 16)
-            }
+    private func ruleText(for rule: RoutingRule) -> Text {
+        iconText(for: rule.sourceAppBundleID)
+            + Text("  \(appName(for: rule.sourceAppBundleID))   →   ")
+            + iconText(for: rule.targetBrowserBundleID)
+            + Text("  \(labelForDestination(rule))")
+    }
+
+    private func iconText(for bundleID: String) -> Text {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            let icon = NSWorkspace.shared.icon(forFile: url.path)
+            return Text(Image(nsImage: icon))
         }
+        return Text(Image(systemName: "app"))
     }
 
     private func appName(for bundleID: String) -> String {

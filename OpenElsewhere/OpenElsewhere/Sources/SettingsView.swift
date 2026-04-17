@@ -393,6 +393,7 @@ struct RuleCard: View {
                 }
             }
             .labelsHidden()
+            .controlSize(.large)
             .frame(maxWidth: .infinity)
 
             Image(systemName: "arrow.right")
@@ -412,6 +413,7 @@ struct RuleCard: View {
                 }
             }
             .labelsHidden()
+            .controlSize(.large)
             .frame(maxWidth: .infinity)
 
             // Profile (if the browser has any)
@@ -424,6 +426,7 @@ struct RuleCard: View {
                     }
                 }
                 .labelsHidden()
+                .controlSize(.large)
                 .frame(width: 150)
             }
 
@@ -436,7 +439,8 @@ struct RuleCard: View {
             }
             .buttonStyle(.borderless)
         }
-        .padding(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(.ultraThinMaterial)

@@ -1,0 +1,44 @@
+name: OpenElsewhere
+options:
+  bundleIdPrefix: com.openelsewhere
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "16.0"
+
+targets:
+  OpenElsewhere:
+    type: application
+    platform: macOS
+    sources:
+      - OpenElsewhere/Sources
+    resources:
+      - OpenElsewhere/Resources/Assets.xcassets
+    info:
+      path: OpenElsewhere/Resources/Info.plist
+      properties:
+        LSUIElement: true
+        NSAppleEventsUsageDescription: "OpenElsewhere uses automation to open links as new tabs in your browser's existing window (instead of popup windows)."
+        CFBundleURLTypes:
+          - CFBundleURLName: "Web URL"
+            CFBundleURLSchemes:
+              - http
+              - https
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: "HTML Document"
+            LSItemContentTypes:
+              - public.html
+              - public.xhtml
+              - public.url
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Default
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openelsewhere.app
+        PRODUCT_NAME: OpenElsewhere
+        MACOSX_DEPLOYMENT_TARGET: "26.0"
+        SWIFT_VERSION: "5.9"
+        INFOPLIST_FILE: OpenElsewhere/Resources/Info.plist
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: OpenElsewhere/Resources/OpenElsewhere.entitlements

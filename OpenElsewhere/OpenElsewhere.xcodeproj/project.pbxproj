@@ -1,0 +1,332 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		09995F95B0D6CB59CC908348 /* BrowserDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252A03BBDB535BAD423B5947 /* BrowserDiscovery.swift */; };
+		18B3D51EEE76E4145A4A1DCD /* BrowserLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B67CD0C27D22BDA49B4B7A /* BrowserLauncher.swift */; };
+		1E520886E0CD4BCBDE6DB27B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55635AC5DF95D7D006175EB9 /* AppDelegate.swift */; };
+		1E7B93C38DB9C57822A4A505 /* CompassLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 699E6900CDFE204DA58DEC82 /* CompassLogo.swift */; };
+		4C974C77D33F875A8DAC0792 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3436BF9AA0A7EB32CAA77AA9 /* SettingsView.swift */; };
+		B97875E460B28CC78B68F522 /* BrowserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51FE9FAE2FA94FCAC0744FE3 /* BrowserProfile.swift */; };
+		C598A15907F217EB9568D03D /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57363341694DBEA8459933CB /* MenuBarView.swift */; };
+		D952A5109B521F13C67B114E /* RoutingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */; };
+		E1C5FD4C4152B30DCA526537 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212753A134B91F8A8E85EBDC /* Models.swift */; };
+		E3B1DDB8CF1553F726791294 /* OpenElsewhereApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B5F29AEBBDB6636B935E97 /* OpenElsewhereApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		212753A134B91F8A8E85EBDC /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		252A03BBDB535BAD423B5947 /* BrowserDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserDiscovery.swift; sourceTree = "<group>"; };
+		3436BF9AA0A7EB32CAA77AA9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		44B5F29AEBBDB6636B935E97 /* OpenElsewhereApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenElsewhereApp.swift; sourceTree = "<group>"; };
+		51FE9FAE2FA94FCAC0744FE3 /* BrowserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserProfile.swift; sourceTree = "<group>"; };
+		55635AC5DF95D7D006175EB9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		57363341694DBEA8459933CB /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		5ED751B65F68B596CA7FD8BC /* OpenElsewhere.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenElsewhere.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		65B67CD0C27D22BDA49B4B7A /* BrowserLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserLauncher.swift; sourceTree = "<group>"; };
+		699E6900CDFE204DA58DEC82 /* CompassLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLogo.swift; sourceTree = "<group>"; };
+		C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingEngine.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		5FFB7136613D33F6493FA5DF /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				55635AC5DF95D7D006175EB9 /* AppDelegate.swift */,
+				252A03BBDB535BAD423B5947 /* BrowserDiscovery.swift */,
+				65B67CD0C27D22BDA49B4B7A /* BrowserLauncher.swift */,
+				51FE9FAE2FA94FCAC0744FE3 /* BrowserProfile.swift */,
+				699E6900CDFE204DA58DEC82 /* CompassLogo.swift */,
+				57363341694DBEA8459933CB /* MenuBarView.swift */,
+				212753A134B91F8A8E85EBDC /* Models.swift */,
+				44B5F29AEBBDB6636B935E97 /* OpenElsewhereApp.swift */,
+				C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */,
+				3436BF9AA0A7EB32CAA77AA9 /* SettingsView.swift */,
+			);
+			name = Sources;
+			path = OpenElsewhere/Sources;
+			sourceTree = "<group>";
+		};
+		951C4E0FC879600E6A1B7BB0 = {
+			isa = PBXGroup;
+			children = (
+				5FFB7136613D33F6493FA5DF /* Sources */,
+				FA3A443D66EF0C038C46ECBC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FA3A443D66EF0C038C46ECBC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5ED751B65F68B596CA7FD8BC /* OpenElsewhere.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		927BA2C6C9006F76ED8B4EB8 /* OpenElsewhere */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 64BD698A679303938EF7EE8D /* Build configuration list for PBXNativeTarget "OpenElsewhere" */;
+			buildPhases = (
+				4905C8A27B70F4AFB32F8305 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpenElsewhere;
+			packageProductDependencies = (
+			);
+			productName = OpenElsewhere;
+			productReference = 5ED751B65F68B596CA7FD8BC /* OpenElsewhere.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		658B435AFBD9F5EECBDE190C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					927BA2C6C9006F76ED8B4EB8 = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = CBE3D013B1D3305A67A1654A /* Build configuration list for PBXProject "OpenElsewhere" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 951C4E0FC879600E6A1B7BB0;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = FA3A443D66EF0C038C46ECBC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				927BA2C6C9006F76ED8B4EB8 /* OpenElsewhere */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4905C8A27B70F4AFB32F8305 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1E520886E0CD4BCBDE6DB27B /* AppDelegate.swift in Sources */,
+				09995F95B0D6CB59CC908348 /* BrowserDiscovery.swift in Sources */,
+				18B3D51EEE76E4145A4A1DCD /* BrowserLauncher.swift in Sources */,
+				B97875E460B28CC78B68F522 /* BrowserProfile.swift in Sources */,
+				1E7B93C38DB9C57822A4A505 /* CompassLogo.swift in Sources */,
+				C598A15907F217EB9568D03D /* MenuBarView.swift in Sources */,
+				E1C5FD4C4152B30DCA526537 /* Models.swift in Sources */,
+				E3B1DDB8CF1553F726791294 /* OpenElsewhereApp.swift in Sources */,
+				D952A5109B521F13C67B114E /* RoutingEngine.swift in Sources */,
+				4C974C77D33F875A8DAC0792 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		42877171D3E41299EC94169B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		473FD2DE09E3C647C3519DAB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = OpenElsewhere/Resources/OpenElsewhere.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = OpenElsewhere/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.openelsewhere.app;
+				PRODUCT_NAME = OpenElsewhere;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		B76AD6D306B2360BB901E78B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = OpenElsewhere/Resources/OpenElsewhere.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = OpenElsewhere/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.openelsewhere.app;
+				PRODUCT_NAME = OpenElsewhere;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		D2B31A054F8F3FBDFAF13C88 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		64BD698A679303938EF7EE8D /* Build configuration list for PBXNativeTarget "OpenElsewhere" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				473FD2DE09E3C647C3519DAB /* Debug */,
+				B76AD6D306B2360BB901E78B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CBE3D013B1D3305A67A1654A /* Build configuration list for PBXProject "OpenElsewhere" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2B31A054F8F3FBDFAF13C88 /* Debug */,
+				42877171D3E41299EC94169B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 658B435AFBD9F5EECBDE190C /* Project object */;
+}
