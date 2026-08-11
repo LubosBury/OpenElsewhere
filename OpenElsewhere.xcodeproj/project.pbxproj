@@ -13,6 +13,7 @@
 		1E7B93C38DB9C57822A4A505 /* CompassLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 699E6900CDFE204DA58DEC82 /* CompassLogo.swift */; };
 		4C974C77D33F875A8DAC0792 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3436BF9AA0A7EB32CAA77AA9 /* SettingsView.swift */; };
 		89BB9B2AE57F5563A7B9A4DC /* Capabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B648F5D2210D90D67F1A4E1 /* Capabilities.swift */; };
+		B42ED686DA42B9CF53001A28 /* ProfileRoutingHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3154F819A61BBB193FB5D58 /* ProfileRoutingHelper.swift */; };
 		B97875E460B28CC78B68F522 /* BrowserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51FE9FAE2FA94FCAC0744FE3 /* BrowserProfile.swift */; };
 		C598A15907F217EB9568D03D /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57363341694DBEA8459933CB /* MenuBarView.swift */; };
 		D952A5109B521F13C67B114E /* RoutingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */; };
@@ -33,6 +34,7 @@
 		65B67CD0C27D22BDA49B4B7A /* BrowserLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserLauncher.swift; sourceTree = "<group>"; };
 		699E6900CDFE204DA58DEC82 /* CompassLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLogo.swift; sourceTree = "<group>"; };
 		C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingEngine.swift; sourceTree = "<group>"; };
+		C3154F819A61BBB193FB5D58 /* ProfileRoutingHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRoutingHelper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -48,6 +50,7 @@
 				57363341694DBEA8459933CB /* MenuBarView.swift */,
 				212753A134B91F8A8E85EBDC /* Models.swift */,
 				44B5F29AEBBDB6636B935E97 /* OpenElsewhereApp.swift */,
+				C3154F819A61BBB193FB5D58 /* ProfileRoutingHelper.swift */,
 				C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */,
 				3436BF9AA0A7EB32CAA77AA9 /* SettingsView.swift */,
 			);
@@ -138,6 +141,7 @@
 				C598A15907F217EB9568D03D /* MenuBarView.swift in Sources */,
 				E1C5FD4C4152B30DCA526537 /* Models.swift in Sources */,
 				E3B1DDB8CF1553F726791294 /* OpenElsewhereApp.swift in Sources */,
+				B42ED686DA42B9CF53001A28 /* ProfileRoutingHelper.swift in Sources */,
 				D952A5109B521F13C67B114E /* RoutingEngine.swift in Sources */,
 				4C974C77D33F875A8DAC0792 /* SettingsView.swift in Sources */,
 			);

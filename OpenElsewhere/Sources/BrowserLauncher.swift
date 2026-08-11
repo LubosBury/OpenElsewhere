@@ -7,30 +7,35 @@ import Foundation
 /// specific profile. Different browsers need different strategies:
 ///
 /// - **Chrome / Brave / Edge / Vivaldi / Opera**: implement a binary-level
-///   singleton protocol. Running their executable a second time with
-///   `--profile-directory=X` is detected by the existing instance (via a
-///   file lock in the user-data-dir), the command line is forwarded over IPC,
-///   and the existing browser opens the URL in the target profile. Launching
-///   via `Process` is the right approach here.
+///   singleton protocol. Starting a second instance with `--profile-directory=X`
+///   is detected by the existing instance (via a file lock in the user-data-dir),
+///   the command line is forwarded over IPC, and the existing browser opens the
+///   URL in the target profile.
 ///
-/// - **Arc / Dia** (The Browser Company): strictly single-instance. Launching
-///   the binary a second time — even with profile flags — triggers an
-///   "<App> is already open. Only one instance can be opened at a time."
-///   dialog. For these, we must go through `/usr/bin/open`, which uses
-///   LaunchServices to deliver the URL to the existing instance via an
-///   `AppleEvent`. `--args` is only honored on *first* launch in this mode,
-///   so profile switching for already-running single-instance browsers is a
-///   best-effort operation and may not take effect until next restart.
+/// - **Arc / Dia** (The Browser Company): strictly single-instance. When they
+///   receive a URL through LaunchServices they open it in a detached popup
+///   ("Little Arc") rather than a tab. A single AppleScript event asking for a
+///   new tab in the front window is the only way to get the expected behaviour.
+///   Under the App Store build this relies on the
+///   `com.apple.security.temporary-exception.apple-events` entitlement.
 ///
 /// - **Firefox**: handles multi-launch gracefully via its own remote protocol.
 ///
-/// - **Safari / unknown**: defer to LaunchServices (`open`). No profile CLI.
+/// - **Safari / unknown**: defer to LaunchServices. No profile CLI.
+///
+/// `@MainActor` because `NSAppleScript` must run on the main thread, and every
+/// caller (the `AppDelegate` Apple Event handler) is already main-isolated.
+@MainActor
 enum BrowserLauncher {
 
-    /// UserDefaults key set to `true` when macOS blocks an automation-event
+    /// UserDefaults key set to `true` when macOS blocks an automation event
     /// with `errAEEventNotPermitted` (-1743). `SettingsView` observes this
     /// key to show a one-click remediation banner.
-    static let automationDeniedDefaultsKey = "automationPermissionDenied"
+    ///
+    /// `nonisolated` because `SettingsView` reads it from a stored-property
+    /// initializer (`@AppStorage(BrowserLauncher.automationDeniedDefaultsKey)`),
+    /// which is not main-actor isolated.
+    nonisolated static let automationDeniedDefaultsKey = "automationPermissionDenied"
 
     /// AppleScript error code returned when the user has denied (or not yet
     /// granted) automation permission in Privacy settings.
@@ -40,57 +45,52 @@ enum BrowserLauncher {
     /// AppleScript. Hardcoding these defends against a malicious app that
     /// registers a conflicting bundle ID with a hostile `CFBundleName`: the
     /// name is never read from disk, only sourced from this trusted map.
+    /// This list must stay in sync with the `temporary-exception.apple-events`
+    /// array in `OpenElsewhere-AppStore.entitlements`.
     private static let knownScriptingNames: [String: String] = [
         "company.thebrowser.Browser": "Arc",
         "company.thebrowser.dia": "Dia",
         "com.thebrowser.dia": "Dia"
     ]
 
-    static func open(_ url: URL, inBrowser bundleID: String, profileDirectory: String? = nil) {
+    static func open(_ url: URL,
+                     inBrowser bundleID: String,
+                     profileDirectory: String? = nil) async {
         guard let browserAppURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
             NSWorkspace.shared.open(url)
             return
         }
 
         let caps = BrowserCapabilities.forBundleID(bundleID)
-        let strictSingleInstance = Self.isStrictSingleInstance(bundleID: bundleID, appURL: browserAppURL)
 
         switch caps.family {
-        case .chromium where strictSingleInstance:
-            // Arc, Dia — can't launch a second binary. Also: by default Arc
-            // routes incoming URLs into "Little Arc" (a popup window) instead
-            // of the main window. Using AppleScript to explicitly create a
-            // tab in the front window bypasses that and gives us the
-            // "open as a new tab in the existing window" behavior users
-            // expect. If AppleScript fails (no windows open, scripting
-            // disabled, etc.), fall back to `/usr/bin/open`.
-            launchViaAppleScript(url: url,
-                                 bundleID: bundleID,
-                                 fallback: {
-                                     launchViaOpen(url: url,
-                                                   bundleID: bundleID,
-                                                   profileArgs: chromiumProfileArgs(profileDirectory))
-                                 })
+        case .chromium where isStrictSingleInstance(bundleID: bundleID, appURL: browserAppURL):
+            // Arc, Dia — a second instance is refused outright, so AppleScript
+            // is the only route to tab behaviour. Fall back to a plain open,
+            // which yields the popup but at least delivers the URL.
+            if launchViaAppleScript(url: url, bundleID: bundleID) { return }
+            await openURL(url, inAppAt: browserAppURL)
 
         case .chromium:
-            // Chrome, Brave, Edge, Vivaldi, Opera — binary IPC handles this.
-            launchViaProcess(url: url,
-                             appURL: browserAppURL,
-                             processArgs: chromiumProfileArgs(profileDirectory) + [url.absoluteString],
-                             fallbackBundleID: bundleID,
-                             fallbackProfileArgs: chromiumProfileArgs(profileDirectory))
+            let profileArgs = chromiumProfileArgs(profileDirectory)
+            if !profileArgs.isEmpty,
+               await launchWithProfile(appURL: browserAppURL,
+                                       arguments: profileArgs + [url.absoluteString]) {
+                return
+            }
+            await openURL(url, inAppAt: browserAppURL)
 
         case .firefox:
-            var args = firefoxProfileArgs(profileDirectory)
-            args.append(contentsOf: ["--new-tab", url.absoluteString])
-            launchViaProcess(url: url,
-                             appURL: browserAppURL,
-                             processArgs: args,
-                             fallbackBundleID: bundleID,
-                             fallbackProfileArgs: firefoxProfileArgs(profileDirectory))
+            let profileArgs = firefoxProfileArgs(profileDirectory)
+            if !profileArgs.isEmpty,
+               await launchWithProfile(appURL: browserAppURL,
+                                       arguments: profileArgs + ["--new-tab", url.absoluteString]) {
+                return
+            }
+            await openURL(url, inAppAt: browserAppURL)
 
         case .safari, .unknown:
-            launchViaOpen(url: url, bundleID: bundleID, profileArgs: [])
+            await openURL(url, inAppAt: browserAppURL)
         }
     }
 
@@ -101,9 +101,6 @@ enum BrowserLauncher {
     /// via an explicit allow-list for apps that do the check in their own
     /// startup code (like Arc).
     private static func isStrictSingleInstance(bundleID: String, appURL: URL) -> Bool {
-        // Explicit allow-list — Arc and Dia both exit with a modal alert if a
-        // second binary instance starts, even though they don't set the
-        // Info.plist flag. This matches `knownScriptingNames` above.
         if knownScriptingNames[bundleID] != nil { return true }
 
         if let bundle = Bundle(url: appURL),
@@ -146,68 +143,78 @@ enum BrowserLauncher {
 
     // MARK: - Launch strategies
 
-    /// Run the browser's binary directly. Suitable for browsers whose binary
-    /// implements the singleton-IPC pattern (Chrome, Brave, Edge, Vivaldi,
-    /// Opera, Firefox). On failure, falls back to `/usr/bin/open`.
-    private static func launchViaProcess(url: URL,
-                                         appURL: URL,
-                                         processArgs: [String],
-                                         fallbackBundleID: String,
-                                         fallbackProfileArgs: [String]) {
-        guard let bundle = Bundle(url: appURL),
-              let exec = bundle.executableURL else {
-            launchViaOpen(url: url, bundleID: fallbackBundleID, profileArgs: fallbackProfileArgs)
-            return
+    /// Deliver a URL together with profile-selection arguments.
+    ///
+    /// Chromium and Firefox treat a second launch carrying arguments as
+    /// "forward these to the running instance over IPC", which is how profile
+    /// targeting works. Two routes reach that:
+    ///
+    /// - **Unsandboxed (Developer ID):** `NSWorkspace.openApplication` with
+    ///   `createsNewApplicationInstance`.
+    /// - **Sandboxed (App Store):** the sandbox silently drops
+    ///   `configuration.arguments` — the browser launches with nothing, and
+    ///   `openApplication` *still* reports success, so its return value cannot
+    ///   be trusted. We never take that route when sandboxed, and go through
+    ///   the user-installed helper script instead.
+    ///
+    /// Returns `false` when no profile-capable route is available, so the
+    /// caller can degrade to a plain open.
+    private static func launchWithProfile(appURL: URL, arguments: [String]) async -> Bool {
+        guard Capabilities.canPassLaunchArguments else {
+            guard let executable = Bundle(url: appURL)?.executableURL else { return false }
+            return await ProfileRoutingHelper.launch(executable: executable, arguments: arguments)
         }
 
-        let process = Process()
-        process.executableURL = exec
-        process.arguments = processArgs
-        // Detach stdio — we never want the browser's stdout/stderr to pipe
-        // back into OpenElsewhere's file descriptors.
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        configuration.activates = true
+        configuration.arguments = arguments
 
         do {
-            try process.run()
+            _ = try await NSWorkspace.shared.openApplication(at: appURL, configuration: configuration)
+            return true
         } catch {
-            print("OpenElsewhere: Process launch of \(exec.lastPathComponent) failed: \(error.localizedDescription)")
-            launchViaOpen(url: url, bundleID: fallbackBundleID, profileArgs: fallbackProfileArgs)
+            print("OpenElsewhere: openApplication(\(appURL.lastPathComponent)) failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    /// Hand the URL to LaunchServices for the given app. This is the universal
+    /// fallback: no profile targeting, but it always delivers the URL, and it
+    /// works identically sandboxed and unsandboxed.
+    private static func openURL(_ url: URL, inAppAt appURL: URL) async {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+
+        do {
+            _ = try await NSWorkspace.shared.open([url],
+                                                  withApplicationAt: appURL,
+                                                  configuration: configuration)
+        } catch {
+            print("OpenElsewhere: open(\(url.absoluteString)) in \(appURL.lastPathComponent) failed: \(error.localizedDescription)")
+            NSWorkspace.shared.open(url)
         }
     }
 
     /// For strictly single-instance Chromium browsers (Arc, Dia), send the
-    /// URL directly to the front window via AppleScript. This reuses the
-    /// existing window (as a new tab) instead of triggering Arc's "Little
-    /// Arc" popup behavior.
-    ///
-    /// Calls `fallback` if scripting fails (target not running, no windows
-    /// open, user denied automation permission, etc.).
-    private static func launchViaAppleScript(url: URL, bundleID: String, fallback: () -> Void) {
+    /// URL directly to the front window via AppleScript. Returns `true` on
+    /// success; the caller falls back to a plain open on `false`.
+    private static func launchViaAppleScript(url: URL, bundleID: String) -> Bool {
         // Only run if the target app is actually running — otherwise the
         // AppleEvent would force-launch it with no window, and `front window`
-        // would fail. Let the fallback (`/usr/bin/open`) cold-start it instead.
+        // would fail. Let the caller's fallback cold-start it instead.
         let isRunning = NSRunningApplication
             .runningApplications(withBundleIdentifier: bundleID)
             .contains { !$0.isTerminated }
-        guard isRunning else {
-            fallback()
-            return
-        }
+        guard isRunning else { return false }
 
         // `scriptingName` is sourced from our trusted allow-list, never from
         // an on-disk bundle's `CFBundleName`. A malicious app that registers
         // a conflicting bundle ID cannot poison the AppleScript target.
-        guard let scriptingName = knownScriptingNames[bundleID] else {
-            fallback()
-            return
-        }
+        guard let scriptingName = knownScriptingNames[bundleID] else { return false }
 
         let escapedURL = sanitizeForAppleScriptLiteral(url.absoluteString)
 
-        // `scriptingName` is an allow-listed literal (`Arc` / `Dia`), so no
-        // escaping is needed. We still embed it via interpolation for
-        // locality of reading.
         let source = """
         tell application "\(scriptingName)"
             activate
@@ -220,10 +227,7 @@ enum BrowserLauncher {
         end tell
         """
 
-        guard let script = NSAppleScript(source: source) else {
-            fallback()
-            return
-        }
+        guard let script = NSAppleScript(source: source) else { return false }
 
         var errorInfo: NSDictionary?
         _ = script.executeAndReturnError(&errorInfo)
@@ -238,39 +242,14 @@ enum BrowserLauncher {
             if code == errAEEventNotPermitted {
                 UserDefaults.standard.set(true, forKey: automationDeniedDefaultsKey)
             }
-            fallback()
-        } else {
-            // Clear any stale permission-denied flag on a successful run,
-            // so the banner disappears after the user grants permission.
-            if UserDefaults.standard.bool(forKey: automationDeniedDefaultsKey) {
-                UserDefaults.standard.set(false, forKey: automationDeniedDefaultsKey)
-            }
-        }
-    }
-
-    /// Delegate to `/usr/bin/open`, which routes through LaunchServices.
-    /// `profileArgs` are appended after `--args` — they are honored only when
-    /// the target app is not already running.
-    private static func launchViaOpen(url: URL, bundleID: String, profileArgs: [String]) {
-        let openURL = URL(fileURLWithPath: "/usr/bin/open")
-
-        var args: [String] = ["-b", bundleID, url.absoluteString]
-        if !profileArgs.isEmpty {
-            args.append("--args")
-            args.append(contentsOf: profileArgs)
+            return false
         }
 
-        let process = Process()
-        process.executableURL = openURL
-        process.arguments = args
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-        } catch {
-            print("OpenElsewhere: /usr/bin/open failed: \(error.localizedDescription)")
-            NSWorkspace.shared.open(url)
+        // Clear any stale permission-denied flag on a successful run, so the
+        // banner disappears after the user grants permission.
+        if UserDefaults.standard.bool(forKey: automationDeniedDefaultsKey) {
+            UserDefaults.standard.set(false, forKey: automationDeniedDefaultsKey)
         }
+        return true
     }
 }

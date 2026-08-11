@@ -8,7 +8,13 @@ import Foundation
 /// on the main run loop, so the contract holds at runtime.
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    /// The `kAEGetURL` handler must be installed in `willFinishLaunching`, not
+    /// `didFinishLaunching`. When OpenElsewhere is the default browser and is
+    /// not already running, macOS launches it *and* delivers the URL event as
+    /// part of the same launch. By `didFinishLaunching` the event has already
+    /// been dispatched with no handler registered, and it is silently dropped —
+    /// so the first link clicked after a reboot goes nowhere.
+    func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
             self,
             andSelector: #selector(handleGetURL(event:reply:)),
@@ -33,15 +39,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let senderBundleID = resolveSenderBundleID(from: event)
         let engine = RoutingEngine.shared
 
+        // `BrowserLauncher.open` is async because `NSWorkspace.openApplication`
+        // is. The Apple Event handler cannot await, so the work is handed to a
+        // main-actor Task; the event returns immediately, which is correct —
+        // the sender does not wait on us.
         guard engine.isEnabled else {
-            BrowserLauncher.open(url, inBrowser: engine.defaultBrowserBundleID)
+            let fallbackBrowser = engine.defaultBrowserBundleID
+            Task { await BrowserLauncher.open(url, inBrowser: fallbackBrowser) }
             return
         }
 
         let destination = engine.destination(forSourceApp: senderBundleID)
-        BrowserLauncher.open(url,
-                             inBrowser: destination.browserBundleID,
-                             profileDirectory: destination.profileDirectoryName)
+        Task {
+            await BrowserLauncher.open(url,
+                                       inBrowser: destination.browserBundleID,
+                                       profileDirectory: destination.profileDirectoryName)
+        }
     }
 
     private func resolveSenderBundleID(from event: NSAppleEventDescriptor) -> String {
