@@ -26,11 +26,19 @@ class BrowserDiscovery {
     }
 
     func installedApps() -> [AppInfo] {
-        let appDirs = [
+        var appDirs = [
             URL(fileURLWithPath: "/Applications"),
-            URL(fileURLWithPath: "/System/Applications"),
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications")
+            URL(fileURLWithPath: "/System/Applications")
         ]
+
+        // Under the App Sandbox `homeDirectoryForCurrentUser` resolves to the
+        // app's container, so scanning it would enumerate nothing useful.
+        if Capabilities.canEnumerateUserApplications {
+            appDirs.append(
+                FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent("Applications")
+            )
+        }
 
         var apps: [String: AppInfo] = [:]
 
@@ -54,6 +62,23 @@ class BrowserDiscovery {
                     apps[bundleID] = AppInfo(bundleID: bundleID, name: name, icon: icon)
                 }
             }
+        }
+
+        // Union with currently-running apps. This recovers most of what the
+        // sandbox hides: an app the user is actually using is discoverable
+        // wherever it lives, including ~/Applications and Setapp. It also
+        // helps the unsandboxed build find apps in unusual locations.
+        for running in NSWorkspace.shared.runningApplications {
+            guard running.activationPolicy == .regular,
+                  let bundleID = running.bundleIdentifier,
+                  let bundleURL = running.bundleURL,
+                  apps[bundleID] == nil else { continue }
+
+            apps[bundleID] = AppInfo(
+                bundleID: bundleID,
+                name: FileManager.default.displayName(atPath: bundleURL.path),
+                icon: NSWorkspace.shared.icon(forFile: bundleURL.path)
+            )
         }
 
         return apps.values
