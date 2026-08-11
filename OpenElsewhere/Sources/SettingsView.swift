@@ -6,6 +6,7 @@ struct SettingsView: View {
     @State private var allApps: [AppInfo] = []
     @State private var isHandlingLinks = false
     @State private var profileHelperInstalled = false
+    @StateObject private var tipJar = TipJar()
 
     // Observes the permission-denied flag set by BrowserLauncher when macOS
     // returns `errAEEventNotPermitted` from an AppleScript event. Updates
@@ -93,24 +94,28 @@ struct SettingsView: View {
 
             Spacer()
 
-            Link(destination: URL(string: "https://buymeacoffee.com/bozka")!) {
-                HStack(spacing: 6) {
-                    Image(systemName: "cup.and.saucer.fill")
-                    Text("Buy Me a Coffee")
+            if Capabilities.showsExternalDonationLink {
+                Link(destination: URL(string: "https://buymeacoffee.com/bozka")!) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "cup.and.saucer.fill")
+                        Text("Buy Me a Coffee")
+                    }
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
+                    )
                 }
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
-                )
+                .foregroundStyle(colorScheme == .dark ? .white : .primary)
+            } else {
+                tipMenu
             }
-            .foregroundStyle(colorScheme == .dark ? .white : .primary)
 
             Toggle("", isOn: $routingEngine.isEnabled)
                 .toggleStyle(.switch)
@@ -187,6 +192,45 @@ struct SettingsView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(accent.opacity(0.35), lineWidth: 0.5)
         )
+    }
+
+    // MARK: - Tip jar
+
+    /// App Store build: a StoreKit tip jar in place of the external donation
+    /// link, which App Review restricts for individual developers.
+    private var tipMenu: some View {
+        Menu {
+            if tipJar.products.isEmpty {
+                Text("Loading…")
+            } else {
+                ForEach(tipJar.products, id: \.id) { product in
+                    Button("\(product.displayName) — \(product.displayPrice)") {
+                        Task { await tipJar.purchase(product) }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: tipJar.didTip ? "heart.fill" : "cup.and.saucer.fill")
+                Text(tipJar.didTip ? "Thank you!" : "Leave a Tip")
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(tipJar.isPurchasing)
+        .foregroundStyle(colorScheme == .dark ? .white : .primary)
+        .task { await tipJar.loadProducts() }
     }
 
     // MARK: - Profile-routing setup card

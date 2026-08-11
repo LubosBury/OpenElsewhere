@@ -11,6 +11,7 @@
 		18B3D51EEE76E4145A4A1DCD /* BrowserLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B67CD0C27D22BDA49B4B7A /* BrowserLauncher.swift */; };
 		1E520886E0CD4BCBDE6DB27B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55635AC5DF95D7D006175EB9 /* AppDelegate.swift */; };
 		1E7B93C38DB9C57822A4A505 /* CompassLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 699E6900CDFE204DA58DEC82 /* CompassLogo.swift */; };
+		476924D198593795650C021E /* TipJar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00BB47E16C0565A0FCF9 /* TipJar.swift */; };
 		4C974C77D33F875A8DAC0792 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3436BF9AA0A7EB32CAA77AA9 /* SettingsView.swift */; };
 		89BB9B2AE57F5563A7B9A4DC /* Capabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B648F5D2210D90D67F1A4E1 /* Capabilities.swift */; };
 		B42ED686DA42B9CF53001A28 /* ProfileRoutingHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3154F819A61BBB193FB5D58 /* ProfileRoutingHelper.swift */; };
@@ -33,6 +34,7 @@
 		5ED751B65F68B596CA7FD8BC /* OpenElsewhere.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenElsewhere.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		65B67CD0C27D22BDA49B4B7A /* BrowserLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserLauncher.swift; sourceTree = "<group>"; };
 		699E6900CDFE204DA58DEC82 /* CompassLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLogo.swift; sourceTree = "<group>"; };
+		B7DA00BB47E16C0565A0FCF9 /* TipJar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJar.swift; sourceTree = "<group>"; };
 		C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingEngine.swift; sourceTree = "<group>"; };
 		C3154F819A61BBB193FB5D58 /* ProfileRoutingHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRoutingHelper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -53,6 +55,7 @@
 				C3154F819A61BBB193FB5D58 /* ProfileRoutingHelper.swift */,
 				C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */,
 				3436BF9AA0A7EB32CAA77AA9 /* SettingsView.swift */,
+				B7DA00BB47E16C0565A0FCF9 /* TipJar.swift */,
 			);
 			name = Sources;
 			path = OpenElsewhere/Sources;
@@ -144,6 +147,7 @@
 				B42ED686DA42B9CF53001A28 /* ProfileRoutingHelper.swift in Sources */,
 				D952A5109B521F13C67B114E /* RoutingEngine.swift in Sources */,
 				4C974C77D33F875A8DAC0792 /* SettingsView.swift in Sources */,
+				476924D198593795650C021E /* TipJar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
