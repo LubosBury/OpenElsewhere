@@ -301,9 +301,9 @@ struct SettingsView: View {
 
     /// Shown when `BrowserLauncher` recorded an `errAEEventNotPermitted`
     /// (-1743) from AppleScript. Without this banner, denying the one-time
-    /// automation prompt results in links silently falling back to
-    /// `/usr/bin/open` (which re-opens the "Little Arc" popup the AppleScript
-    /// path was designed to avoid) with no user-facing indication of why.
+    /// automation prompt results in links silently falling back to a plain
+    /// LaunchServices open — which re-opens the "Little Arc" popup the
+    /// AppleScript path exists to avoid — with no indication of why.
     private var automationPermissionBanner: some View {
         HStack(spacing: 12) {
             Image(systemName: "lock.shield.fill")
