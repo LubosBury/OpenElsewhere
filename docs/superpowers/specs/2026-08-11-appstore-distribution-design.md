@@ -230,11 +230,41 @@ decision rather than merely the code.
 
 ## Open considerations
 
-**Deployment target is macOS 26.0** (`project.yml:5`). This restricts the App
-Store audience to Tahoe and later — a severe reach limitation for a free utility.
-Not in scope for this work, but worth a deliberate decision before submitting: if
-nothing in the codebase requires macOS 26 APIs, lowering the target would
-materially widen the addressable audience.
+**Deployment target stays at macOS 26.0 — decided, not inherited.**
+
+This was investigated empirically by compiling the app at every candidate target
+(Xcode 26.6, SDK macOS 26.5):
+
+| Target | Result |
+|---|---|
+| 15.0 / 14.0 / 13.3 | Builds with zero source changes |
+| 13.0 | One blocker: `scrollBounceBehavior(_:axes:)` requires 13.3 |
+| 12.0 | Hard floor — `MenuBarExtra`, `Window`, `openWindow`, `defaultSize`, and `windowResizability` are all macOS 13 |
+
+So **nothing in the current codebase requires macOS 26**. The README previously
+claimed the UI "uses Liquid Glass APIs that aren't backported"; that was
+incorrect. `glassCard()` (`SettingsView.swift:498`) is a project-local modifier
+built on `.ultraThinMaterial` and `.regularMaterial`, available since macOS 12.
+No Apple glass API is used anywhere.
+
+The target nevertheless **remains 26.0** by explicit decision: the interface is
+about to be redesigned around genuine Liquid Glass (`glassEffect`,
+`GlassEffectContainer`, `.buttonStyle(.glass)`), which is macOS 26-only with no
+back-deployment path. Supporting 13.0 would mean designing and maintaining two
+visual treatments behind `#available`, and the older path would inevitably
+degrade.
+
+**Consequence to accept knowingly:** the App Store listing reaches only Tahoe and
+later. For a free utility this is a significant reduction in addressable
+audience, and it is the single largest constraint on adoption in this plan. The
+README now states the reason honestly rather than claiming a technical
+requirement that does not exist.
+
+**Implication for the redesign:** because the target stays at 26.0, no
+availability gating is needed anywhere, and `GlassCardModifier` can be replaced
+outright rather than branched. The Liquid Glass redesign is separate work and is
+not part of this spec, but it should land **before** the first App Store
+submission so the store screenshots show the final design.
 
 **`OpenElsewhere/.git`** is a stale duplicate clone of this same repository. The
 authoritative sources are tracked by the outer repo. Deleting the inner `.git`
