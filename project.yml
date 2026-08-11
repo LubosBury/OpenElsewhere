@@ -5,6 +5,11 @@ options:
     macOS: "26.0"
   xcodeVersion: "16.0"
 
+configs:
+  Debug: debug
+  Release: release
+  ReleaseAppStore: release
+
 targets:
   OpenElsewhere:
     type: application
@@ -17,6 +22,7 @@ targets:
       path: OpenElsewhere/Resources/Info.plist
       properties:
         LSUIElement: true
+        ITSAppUsesNonExemptEncryption: false
         NSAppleEventsUsageDescription: "OpenElsewhere uses automation to open links as new tabs in your browser's existing window (instead of popup windows)."
         CFBundleURLTypes:
           - CFBundleURLName: "Web URL"
@@ -38,7 +44,20 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "26.0"
         SWIFT_VERSION: "5.9"
         INFOPLIST_FILE: OpenElsewhere/Resources/Info.plist
-        CODE_SIGN_IDENTITY: "-"
-        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: 78QQBJB52G
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_ENTITLEMENTS: OpenElsewhere/Resources/OpenElsewhere.entitlements
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "Apple Development"
+          CODE_SIGN_STYLE: Automatic
+        Release:
+          # Developer ID channel: notarized DMG via Homebrew. Not sandboxed.
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          CODE_SIGN_STYLE: Manual
+        ReleaseAppStore:
+          # Mac App Store channel: sandboxed, Apple Distribution signed.
+          CODE_SIGN_IDENTITY: "Apple Distribution"
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_ENTITLEMENTS: OpenElsewhere/Resources/OpenElsewhere-AppStore.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: APP_STORE
