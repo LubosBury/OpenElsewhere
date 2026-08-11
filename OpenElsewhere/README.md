@@ -2,6 +2,8 @@
 
 > Route links from specific macOS apps to the browser you actually want to use them in.
 
+<a href="https://buymeacoffee.com/bozka"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"></a>
+
 macOS lets you pick exactly **one** default browser. OpenElsewhere sits between that choice and the apps that open links, so you can say:
 
 - "Links from Slack → open in **Arc** (Work space)"
@@ -92,8 +94,10 @@ Click **OK**. This lets OpenElsewhere tell Arc to open the URL as a new tab in y
 
 - **Profile switching on already-running Arc is not supported.** Arc is strictly single-instance and ignores command-line arguments on subsequent invocations. The URL goes to whichever Arc space is currently active. If you need hard "Slack → Arc Work space" routing, keep the Work space active, or use Chrome for that rule.
 - **Some apps open URLs via helper processes.** When that happens the sender PID resolves to the helper rather than the parent app. The fallback is to use `NSWorkspace.shared.frontmostApplication`, which is correct for most user-initiated clicks.
-- **macOS 26+ only** — the UI uses Liquid Glass APIs that aren't backported.
-- **Not sandboxed, not in the App Store** — by design. The app needs to send Apple Events to other browsers, which requires the `com.apple.security.automation.apple-events` entitlement and rules out sandboxing.
+- **macOS 26 (Tahoe) or later** — a deliberate choice. The app compiles cleanly back to macOS 13, but the interface is being designed around Liquid Glass, which has no back-deployment.
+- **The App Store build cannot set itself as your default browser**, cannot pass profile arguments to a browser without a one-time helper-script install, and only lists apps in `~/Applications` while they are running. All three are App Sandbox restrictions. The Homebrew build has none of them.
+
+> **Note:** this file is a stale duplicate of the [root README](../README.md), left behind by an old nested clone. Read that one instead.
 
 ---
 

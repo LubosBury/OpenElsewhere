@@ -60,10 +60,20 @@ APP_PATH="${EXPORT_DIR}/${SCHEME}.app"
 
 echo "==> Verifying the signature and hardened runtime"
 codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
-codesign -dv --verbose=4 "${APP_PATH}" 2>&1 | grep -q "flags=.*runtime" || {
+
+# Capture first, then match. Piping straight into `grep -q` under `pipefail`
+# fails spuriously: grep exits on the first match, closes the pipe, and
+# codesign dies of SIGPIPE, which pipefail then reports as pipeline failure.
+CODESIGN_INFO="$(codesign -dv --verbose=4 "${APP_PATH}" 2>&1 || true)"
+if ! printf '%s' "${CODESIGN_INFO}" | grep -q "flags=.*runtime"; then
   echo "FAIL: hardened runtime is not enabled; notarization would be rejected." >&2
   exit 1
-}
+fi
+if ! printf '%s' "${CODESIGN_INFO}" | grep -q "Authority=Developer ID Application"; then
+  echo "FAIL: not signed with a Developer ID Application certificate." >&2
+  exit 1
+fi
+echo "    hardened runtime and Developer ID signature confirmed"
 
 echo "==> Building DMG"
 rm -f "${DMG_PATH}"

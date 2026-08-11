@@ -48,17 +48,44 @@ I use Safari for personal browsing and Arc for work. I wanted the links from Sla
 
 ---
 
-## Installation
+## Install
 
-There's no signed release yet — you build it from source with Xcode.
+OpenElsewhere is a free, open-source utility, available from the Mac App Store or as a notarized DMG through Homebrew. Both are signed by the same developer account, and neither needs a Gatekeeper workaround.
+
+The two builds differ in two places, because the App Store requires sandboxing:
+
+| | App Store | Homebrew / DMG |
+|---|---|---|
+| Routing links to a chosen browser | ✅ | ✅ |
+| Routing to a specific browser **profile** | after a [one-time setup](#enabling-profile-routing-app-store-build) | ✅ works immediately |
+| Setting itself as default browser | opens System Settings for you | one click |
+| Apps in `~/Applications` as rule sources | only while they're running | always |
+
+### Option A — Mac App Store
+
+Search for **OpenElsewhere**, or install it directly from its App Store page. Updates arrive automatically.
+
+### Option B — Homebrew
+
+```bash
+brew tap lubosbury/openelsewhere
+brew install --cask openelsewhere
+```
+
+Homebrew also handles upgrades for you (`brew upgrade --cask openelsewhere`). No `--no-quarantine` flag is needed — the app is notarized.
+
+### Option C — Direct DMG from GitHub Releases
+
+1. Grab the latest `.dmg` from [Releases](https://github.com/LubosBury/OpenElsewhere/releases).
+2. Open it and drag `OpenElsewhere.app` into `/Applications`.
+
+### Option D — Build from source
 
 **Requirements**
 
 - macOS 26 (Tahoe) or later
 - Xcode 16 or later
 - [`xcodegen`](https://github.com/yonsm/XcodeGen) (install with `brew install xcodegen`)
-
-**Build**
 
 ```bash
 git clone https://github.com/LubosBury/OpenElsewhere.git
@@ -67,9 +94,27 @@ xcodegen generate            # regenerates OpenElsewhere.xcodeproj from project.
 open OpenElsewhere.xcodeproj
 ```
 
-Then in Xcode: **Product → Archive** (for a release build) or **⌘R** to run the debug build.
+Then in Xcode: **Product → Archive** (for a release build) or **⌘R** to run the debug build. Drag the resulting `OpenElsewhere.app` to `/Applications`.
 
-Drag the resulting `OpenElsewhere.app` to `/Applications`.
+---
+
+## Enabling profile routing (App Store build)
+
+Skip this if you installed via Homebrew — profile routing works out of the box there.
+
+The App Store build is sandboxed, and macOS does not let a sandboxed app pass command-line arguments to another program. Since that is exactly how browsers are told which profile to use, profile routing needs a small helper script that you install once. Links still route to the right *browser* without it; they just land in that browser's default profile.
+
+Open **Settings** in OpenElsewhere and use the **Enable profile routing** card:
+
+1. Click **Copy Script**.
+2. Click **Open Folder** — Finder opens `~/Library/Application Scripts/com.openelsewhere.app/`.
+3. Save the script there as `open.sh`.
+4. Make it executable:
+   ```bash
+   chmod +x ~/Library/Application\ Scripts/com.openelsewhere.app/open.sh
+   ```
+
+Switch back to OpenElsewhere and the card disappears. The script only ever runs programs OpenElsewhere hands it — it contains a single `exec "$@"` line, and you can read it before installing.
 
 ---
 
@@ -77,7 +122,7 @@ Drag the resulting `OpenElsewhere.app` to `/Applications`.
 
 1. Launch **OpenElsewhere**. A compass icon appears in the menu bar.
 2. Click the icon → **Settings…**
-3. Click **Make it Default** to register OpenElsewhere as your default link handler. (macOS will confirm the switch. Your old default browser is remembered by macOS and can be restored any time in **System Settings → Desktop & Dock → Default web browser**.)
+3. Click **Make it Default** to register OpenElsewhere as your default link handler. (On the App Store build this button reads **Open System Settings** instead, because sandboxed apps aren't allowed to change the default handler themselves — pick OpenElsewhere under **Default web browser**.) Your old default browser is remembered by macOS and can be restored any time in **System Settings → Desktop & Dock → Default web browser**.
 4. Pick a **Default Browser** — the fallback when no rule matches (usually Safari).
 5. Click **+ Add Rule** to create app-to-browser mappings.
 6. Optionally pick a **profile** next to each rule (shown only for browsers that support them).
@@ -94,8 +139,10 @@ Click **OK**. This lets OpenElsewhere tell Arc to open the URL as a new tab in y
 
 - **Profile switching on already-running Arc is not supported.** Arc is strictly single-instance and ignores command-line arguments on subsequent invocations. The URL goes to whichever Arc space is currently active. If you need hard "Slack → Arc Work space" routing, keep the Work space active, or use Chrome for that rule.
 - **Some apps open URLs via helper processes.** When that happens the sender PID resolves to the helper rather than the parent app. The fallback is to use `NSWorkspace.shared.frontmostApplication`, which is correct for most user-initiated clicks.
-- **macOS 26+ only** — the UI uses Liquid Glass APIs that aren't backported.
-- **Not sandboxed, not in the App Store** — by design. The app needs to send Apple Events to other browsers, which requires the `com.apple.security.automation.apple-events` entitlement and rules out sandboxing.
+- **macOS 26 (Tahoe) or later** — a deliberate choice. The app compiles cleanly back to macOS 13, but the interface is being designed around Liquid Glass, which has no back-deployment.
+- **The App Store build cannot set itself as your default browser.** Apple doesn't allow sandboxed apps to change default handlers, so it opens System Settings for you instead. The Homebrew build does it in one click.
+- **The App Store build needs a one-time script install for profile routing.** See [Enabling profile routing](#enabling-profile-routing-app-store-build). The sandbox silently discards launch arguments, which is how browsers are told which profile to use.
+- **The App Store build only lists apps in `~/Applications` while they're running.** The sandbox hides that directory; running apps are still discoverable. The Homebrew build sees everything.
 
 ---
 
@@ -131,11 +178,13 @@ Anytime you edit `project.yml` (adding files, changing settings), run `xcodegen 
 
 Issues and PRs welcome! A few ideas that would be useful:
 
-- Signed release builds / Homebrew Cask
+- Notarized release builds (requires a paid Apple Developer ID — happy to accept a signing sponsor)
 - URL-pattern rules (e.g. `github.com` links always in Chrome regardless of source)
 - Launch-at-login toggle (via `SMAppService`)
 - Proper handling of Electron-style helper processes (walk up the process tree to the parent app)
 - Icon and design polish
+
+Releasing a new version? See [RELEASING.md](RELEASING.md).
 
 If you're adding a new browser, look at `BrowserCapabilities.forBundleID(_:)` in `BrowserProfile.swift` and `BrowserLauncher.swift` — most browsers slot into one of the existing families.
 

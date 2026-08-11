@@ -46,8 +46,13 @@ xcodebuild \
 
 echo "==> Verifying the sandbox entitlement made it into the archive"
 APP_PATH="${ARCHIVE_PATH}/Products/Applications/${SCHEME}.app"
-if ! codesign -d --entitlements - --xml "${APP_PATH}" 2>/dev/null \
-     | plutil -convert xml1 -o - - | grep -q "com.apple.security.app-sandbox"; then
+
+# Capture first, then match. Piping straight into `grep -q` under `pipefail`
+# fails spuriously whenever the producer is still writing when grep exits on
+# its first match and closes the pipe.
+ENTITLEMENTS="$(codesign -d --entitlements - --xml "${APP_PATH}" 2>/dev/null \
+  | plutil -convert xml1 -o - - 2>/dev/null || true)"
+if ! printf '%s' "${ENTITLEMENTS}" | grep -q "com.apple.security.app-sandbox"; then
   echo "FAIL: the archived app is not sandboxed. App Store upload will be rejected." >&2
   exit 1
 fi
