@@ -8,6 +8,30 @@
 
 **Tech Stack:** Swift 5.9, SwiftUI, AppKit, StoreKit 2, XcodeGen, xcodebuild, notarytool, GitHub Actions, Homebrew Cask.
 
+## Amendment — 2026-08-11, after the Task 1 spike
+
+The spike (Task 1, commit `a286d75`) returned a partial failure that changes
+Tasks 2, 3, and 4.
+
+**Finding:** under the App Sandbox, `NSWorkspace.OpenConfiguration.arguments`
+is silently dropped. The browser launches with **no arguments at all** — no
+profile, no URL — and `openApplication` still returns success, so no code path
+can detect it. Reproduced three times. Controls prove the sandbox is the cause:
+the identical call succeeds with the sandbox entitlement removed.
+
+**What still works sandboxed:** `open([url], withApplicationAt:)` for plain
+routing, and Arc/Dia AppleScript under the temporary-exception entitlement.
+
+**Resolution (chosen by the user):** profile routing on the App Store build goes
+through `NSUserUnixTask`, executing a helper script the user installs once into
+`~/Library/Application Scripts/com.openelsewhere.app/`. That runs outside the
+sandbox and was verified working in the spike. The app **cannot** install the
+script itself — that restriction is the entire purpose of the directory — so
+`SettingsView` gains an onboarding card that walks the user through it.
+
+Plain routing works with no setup; profiles degrade gracefully to
+"opens in the browser, default profile" until the script is installed.
+
 ## Global Constraints
 
 - **Deployment target stays `macOS 26.0`** in both `project.yml:5` and `project.yml:38`. Do not lower it. A Liquid Glass redesign is landing separately and depends on it.
@@ -42,6 +66,7 @@ The manual Apple-side setup (certificates, App Store Connect record, IAP product
 | `OpenElsewhere/Resources/OpenElsewhere-AppStore.entitlements` | Create (Task 2) | Sandbox, network, apple-events exception |
 | `project.yml` | Modify (Task 2) | Two configurations, per-config signing |
 | `OpenElsewhere/Sources/BrowserLauncher.swift` | Modify (Task 3) | `Process` → async `NSWorkspace` |
+| `OpenElsewhere/Sources/ProfileRoutingHelper.swift` | Create (Task 3) | `NSUserUnixTask` profile routing for the sandboxed build |
 | `OpenElsewhere/Sources/AppDelegate.swift` | Modify (Task 3) | Wrap the now-async launcher in a `Task` |
 | `OpenElsewhere/Sources/BrowserDiscovery.swift` | Modify (Task 4) | Gate `~/Applications`, union running apps |
 | `OpenElsewhere/Sources/SettingsView.swift` | Modify (Tasks 4, 5) | Default-browser card, tip jar UI |
@@ -318,7 +343,7 @@ Replace the placeholder with the observed result. This commit message is the rec
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `Capabilities.canSetDefaultBrowser`, `Capabilities.canEnumerateUserApplications`, `Capabilities.showsExternalDonationLink` — all `static let Bool`. Tasks 4 and 5 read these. Also produces the `ReleaseAppStore` build configuration name, used by Tasks 6 and 7.
+- Produces: `Capabilities.canSetDefaultBrowser`, `Capabilities.canEnumerateUserApplications`, `Capabilities.showsExternalDonationLink`, `Capabilities.canPassLaunchArguments`, `Capabilities.usesScriptBasedProfileRouting` — all `static let Bool`. Tasks 3, 4, and 5 read these. Also produces the `ReleaseAppStore` build configuration name, used by Tasks 6 and 7.
 
 - [ ] **Step 1: Create the App Store entitlements**
 
@@ -382,23 +407,34 @@ enum Capabilities {
     /// Store build offers a StoreKit tip jar instead.
     static let showsExternalDonationLink = false
 
+    /// The App Sandbox silently drops
+    /// `NSWorkspace.OpenConfiguration.arguments`: the target launches with no
+    /// arguments at all, and `openApplication` still reports success.
+    /// Verified by the Task 1 spike, 2026-08-11.
+    static let canPassLaunchArguments = false
+
+    /// Profile routing therefore goes through a user-installed helper script
+    /// executed via `NSUserUnixTask`, which runs outside the sandbox.
+    static let usesScriptBasedProfileRouting = true
+
     #else
 
     static let canSetDefaultBrowser = true
     static let canEnumerateUserApplications = true
     static let showsExternalDonationLink = true
+    static let canPassLaunchArguments = true
+    static let usesScriptBasedProfileRouting = false
 
     #endif
 }
 ```
 
-> **Why only three flags.** The spec also anticipated `isSandboxed` and
-> `canSpawnProcesses`. Neither has a reader: Task 3 removes `Process` from the
-> shared path entirely rather than keeping a second launcher, and nothing needs
-> to ask whether it is sandboxed in the abstract. Adding unread constants would
-> be dead code. If the Task 1 spike fails and the `Process` contingency has to
-> be resurrected, `canSpawnProcesses` gets added *then*, together with the code
-> that reads it.
+> **Why these five flags.** Each has a reader: Task 3 branches on
+> `canPassLaunchArguments`, Task 4 reads `canSetDefaultBrowser`,
+> `canEnumerateUserApplications`, and `usesScriptBasedProfileRouting`, and
+> Task 5 reads `showsExternalDonationLink`. The spec also anticipated
+> `isSandboxed` and `canSpawnProcesses`; neither has a reader, so neither is
+> defined. Unread constants are dead code.
 
 - [ ] **Step 3: Add the configurations to project.yml**
 
@@ -518,14 +554,94 @@ git commit -m "Add ReleaseAppStore configuration, sandbox entitlements, and Capa
 ### Task 3: Rewrite BrowserLauncher on async NSWorkspace
 
 **Files:**
+- Create: `OpenElsewhere/Sources/ProfileRoutingHelper.swift`
 - Modify: `OpenElsewhere/Sources/BrowserLauncher.swift` (whole-file rewrite)
 - Modify: `OpenElsewhere/Sources/AppDelegate.swift:29-45`
 
 **Interfaces:**
-- Consumes: `Capabilities` (Task 2) — not read directly here, but the file must compile under both configurations. `BrowserCapabilities.forBundleID(_:)` and `BrowserFamily` from `BrowserProfile.swift`.
-- Produces: `@MainActor BrowserLauncher.open(_ url: URL, inBrowser bundleID: String, profileDirectory: String?) async` — note this is now **async** and **@MainActor**. `BrowserLauncher.automationDeniedDefaultsKey: String` is unchanged and still read by `SettingsView.swift:12`.
+- Consumes: `Capabilities.canPassLaunchArguments` (Task 2). `BrowserCapabilities.forBundleID(_:)` and `BrowserFamily` from `BrowserProfile.swift`.
+- Produces: `@MainActor BrowserLauncher.open(_ url: URL, inBrowser bundleID: String, profileDirectory: String?) async` — note this is now **async** and **@MainActor**. `BrowserLauncher.automationDeniedDefaultsKey: String` is unchanged and still read by `SettingsView.swift:12`. Also produces `ProfileRoutingHelper.isInstalled: Bool`, `ProfileRoutingHelper.scriptsDirectory: URL?`, `ProfileRoutingHelper.scriptSource: String`, `ProfileRoutingHelper.scriptName: String`, and `ProfileRoutingHelper.launch(executable:arguments:) async -> Bool`, all read by Task 4's onboarding card.
 
-- [ ] **Step 1: Rewrite BrowserLauncher.swift**
+- [ ] **Step 1: Create ProfileRoutingHelper**
+
+The two files in this step are interdependent — `BrowserLauncher` will not compile without the helper — so they land together.
+
+Create `OpenElsewhere/Sources/ProfileRoutingHelper.swift`:
+
+```swift
+import AppKit
+import Foundation
+
+/// Profile routing for the sandboxed App Store build.
+///
+/// The App Sandbox silently drops `NSWorkspace.OpenConfiguration.arguments`:
+/// the browser launches with no arguments at all, and `openApplication` still
+/// reports success, so the failure is undetectable from the return value.
+/// (Verified by spike, 2026-08-11.)
+///
+/// The only sanctioned way for a sandboxed app to pass command-line arguments
+/// to another binary is `NSUserUnixTask`, which executes a script the **user**
+/// has placed in `~/Library/Application Scripts/<bundle-id>/`. The app cannot
+/// install that script itself — that restriction is the entire point of the
+/// directory — so `SettingsView` walks the user through it.
+enum ProfileRoutingHelper {
+
+    static let scriptName = "open.sh"
+
+    /// Exact contents the user must place at `scriptsDirectory/open.sh`.
+    /// Kept deliberately trivial: it execs whatever it is handed, so the app
+    /// stays in control of which browser and which flags are used, and the
+    /// script never needs updating when browser support changes.
+    static let scriptSource = """
+    #!/bin/bash
+    # OpenElsewhere profile-routing helper.
+    #
+    # The Mac App Store build is sandboxed and cannot pass command-line
+    # arguments to a browser. This script does it on the app's behalf.
+    # Argument 1 is the browser executable; the rest are its arguments.
+    exec "$@"
+    """
+
+    /// `~/Library/Application Scripts/com.openelsewhere.app/`. Readable and
+    /// executable by the sandboxed app, writable only by the user.
+    static var scriptsDirectory: URL? {
+        try? FileManager.default.url(for: .applicationScriptsDirectory,
+                                     in: .userDomainMask,
+                                     appropriateFor: nil,
+                                     create: false)
+    }
+
+    static var scriptURL: URL? {
+        scriptsDirectory?.appendingPathComponent(scriptName)
+    }
+
+    /// True once the user has installed the script and made it executable.
+    /// A non-executable file is treated as not installed, because
+    /// `NSUserUnixTask` would fail on it anyway.
+    static var isInstalled: Bool {
+        guard let scriptURL else { return false }
+        return FileManager.default.isExecutableFile(atPath: scriptURL.path)
+    }
+
+    /// Run the browser with arguments, outside the sandbox.
+    /// Returns `false` if the script is missing or execution failed, so the
+    /// caller degrades to opening the URL without profile selection.
+    static func launch(executable: URL, arguments: [String]) async -> Bool {
+        guard let scriptURL, isInstalled else { return false }
+
+        do {
+            let task = try NSUserUnixTask(url: scriptURL)
+            try await task.execute(withArguments: [executable.path] + arguments)
+            return true
+        } catch {
+            print("OpenElsewhere: profile helper script failed — \(error.localizedDescription)")
+            return false
+        }
+    }
+}
+```
+
+- [ ] **Step 1b: Rewrite BrowserLauncher.swift**
 
 Replace the entire contents of `OpenElsewhere/Sources/BrowserLauncher.swift` with:
 
@@ -607,13 +723,21 @@ enum BrowserLauncher {
             await openURL(url, inAppAt: browserAppURL)
 
         case .chromium:
-            let args = chromiumProfileArgs(profileDirectory) + [url.absoluteString]
-            if await launchWithArguments(appURL: browserAppURL, arguments: args) { return }
+            let profileArgs = chromiumProfileArgs(profileDirectory)
+            if !profileArgs.isEmpty,
+               await launchWithProfile(appURL: browserAppURL,
+                                       arguments: profileArgs + [url.absoluteString]) {
+                return
+            }
             await openURL(url, inAppAt: browserAppURL)
 
         case .firefox:
-            let args = firefoxProfileArgs(profileDirectory) + ["--new-tab", url.absoluteString]
-            if await launchWithArguments(appURL: browserAppURL, arguments: args) { return }
+            let profileArgs = firefoxProfileArgs(profileDirectory)
+            if !profileArgs.isEmpty,
+               await launchWithProfile(appURL: browserAppURL,
+                                       arguments: profileArgs + ["--new-tab", url.absoluteString]) {
+                return
+            }
             await openURL(url, inAppAt: browserAppURL)
 
         case .safari, .unknown:
@@ -670,11 +794,28 @@ enum BrowserLauncher {
 
     // MARK: - Launch strategies
 
-    /// Start a (possibly second) instance of the app with command-line
-    /// arguments. Chromium and Firefox both treat this as "forward these
-    /// arguments to the running instance over IPC", which is how profile
-    /// targeting works. Returns `false` if the launch failed.
-    private static func launchWithArguments(appURL: URL, arguments: [String]) async -> Bool {
+    /// Deliver a URL together with profile-selection arguments.
+    ///
+    /// Chromium and Firefox treat a second launch carrying arguments as
+    /// "forward these to the running instance over IPC", which is how profile
+    /// targeting works. Two routes reach that:
+    ///
+    /// - **Unsandboxed (Developer ID):** `NSWorkspace.openApplication` with
+    ///   `createsNewApplicationInstance`. Verified working.
+    /// - **Sandboxed (App Store):** the sandbox silently drops
+    ///   `configuration.arguments` — the browser launches with nothing, and
+    ///   `openApplication` *still* reports success, so the return value cannot
+    ///   be trusted. We therefore never take that route when sandboxed, and
+    ///   go through the user-installed helper script instead.
+    ///
+    /// Returns `false` when no profile-capable route is available, so the
+    /// caller can degrade to a plain open.
+    private static func launchWithProfile(appURL: URL, arguments: [String]) async -> Bool {
+        guard Capabilities.canPassLaunchArguments else {
+            guard let executable = Bundle(url: appURL)?.executableURL else { return false }
+            return await ProfileRoutingHelper.launch(executable: executable, arguments: arguments)
+        }
+
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.createsNewApplicationInstance = true
         configuration.activates = true
@@ -1014,6 +1155,94 @@ In `OpenElsewhere/Sources/SettingsView.swift`, replace the `statusBanner` comput
     }
 ```
 
+- [ ] **Step 3b: Add the profile-routing setup card**
+
+Shown only on the App Store build, and only until the script is installed. Add
+state alongside the other `@State` properties in `SettingsView`:
+
+```swift
+    @State private var profileHelperInstalled = false
+```
+
+Add the gate and the card:
+
+```swift
+    private var showsProfileHelperCard: Bool {
+        Capabilities.usesScriptBasedProfileRouting && !profileHelperInstalled
+    }
+
+    /// Profile routing needs a helper script the user must install by hand:
+    /// the sandbox forbids the app from writing to its own Application
+    /// Scripts directory, which is exactly what makes the directory a safe
+    /// escape hatch. Plain routing works without it, so this is an
+    /// enhancement prompt, not a blocker.
+    private var profileHelperCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.2.badge.gearshape")
+                    .font(.title2)
+                    .foregroundStyle(accent)
+                    .symbolRenderingMode(.hierarchical)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Enable profile routing")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Links already go to the right browser. To also target a specific profile, macOS needs you to install a small helper script — sandboxed apps aren't allowed to install it themselves.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Copy Script") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(ProfileRoutingHelper.scriptSource,
+                                                   forType: .string)
+                }
+                Button("Open Folder") {
+                    if let dir = ProfileRoutingHelper.scriptsDirectory {
+                        NSWorkspace.shared.open(dir)
+                    }
+                }
+                Button("Check Again") {
+                    profileHelperInstalled = ProfileRoutingHelper.isInstalled
+                }
+                Spacer()
+            }
+            .controlSize(.small)
+
+            Text("Save the script as \(ProfileRoutingHelper.scriptName) in the folder that opens, then make it executable:\nchmod +x \(ProfileRoutingHelper.scriptName)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(accent.opacity(colorScheme == .dark ? 0.12 : 0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(accent.opacity(0.25), lineWidth: 0.5)
+        )
+    }
+```
+
+Insert it into the `body` stack, immediately after the automation-permission
+banner line:
+
+```swift
+                    if showsProfileHelperCard { profileHelperCard }
+```
+
+And seed the state in `loadData()` by adding one line:
+
+```swift
+        profileHelperInstalled = ProfileRoutingHelper.isInstalled
+```
+
 - [ ] **Step 4: Re-check default-browser status when the window regains focus**
 
 The sandboxed user leaves the app to change the setting, so the banner must notice on return. In `SettingsView.swift`, find the `body` property and add one modifier immediately after the existing `.onAppear(perform: loadData)` line:
@@ -1022,8 +1251,13 @@ The sandboxed user leaves the app to change the setting, so the banner must noti
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
             checkIfDefault()
+            profileHelperInstalled = ProfileRoutingHelper.isInstalled
         }
 ```
+
+The helper check rides along here for the same reason: the user leaves the app
+to install the script, so returning to the window is exactly when the card
+should disappear.
 
 - [ ] **Step 5: Verify both configurations compile**
 
