@@ -49,8 +49,14 @@ struct SettingsView: View {
         // prompts should re-evaluate and disappear.
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
-            checkIfDefault()
-            profileHelperInstalled = ProfileRoutingHelper.isInstalled
+            // Hop to the next main-actor turn before touching @State.
+            // `didBecomeActive` fires during launch, which can land inside a
+            // SwiftUI view update; mutating state there is undefined
+            // behaviour and logs "Modifying state during view update".
+            Task { @MainActor in
+                checkIfDefault()
+                profileHelperInstalled = ProfileRoutingHelper.isInstalled
+            }
         }
     }
 
