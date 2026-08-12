@@ -1,0 +1,62 @@
+{
+  "identifier" : "OpenElsewhereTips",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "OE0000001",
+      "localizations" : [
+        {
+          "description" : "A small thank you. Unlocks nothing — the app is free.",
+          "displayName" : "Small Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.openelsewhere.app.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "OE0000002",
+      "localizations" : [
+        {
+          "description" : "A generous thank you. Unlocks nothing — the app is free.",
+          "displayName" : "Medium Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.openelsewhere.app.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "OE0000003",
+      "localizations" : [
+        {
+          "description" : "A very generous thank you. Unlocks nothing — the app is free.",
+          "displayName" : "Large Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.openelsewhere.app.tip.large",
+      "referenceName" : "Large Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

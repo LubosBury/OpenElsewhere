@@ -5,6 +5,8 @@ struct SettingsView: View {
     @State private var browsers: [AppInfo] = []
     @State private var allApps: [AppInfo] = []
     @State private var isHandlingLinks = false
+    @State private var profileHelperInstalled = false
+    @StateObject private var tipJar = TipJar()
 
     // Observes the permission-denied flag set by BrowserLauncher when macOS
     // returns `errAEEventNotPermitted` from an AppleScript event. Updates
@@ -32,6 +34,7 @@ struct SettingsView: View {
                     defaultBrowserCard
                     if !isHandlingLinks { statusBanner }
                     if automationPermissionDenied { automationPermissionBanner }
+                    if showsProfileHelperCard { profileHelperCard }
                     rulesCard
                 }
                 .padding(24)
@@ -41,6 +44,20 @@ struct SettingsView: View {
         .tint(accent)
         .frame(minWidth: 620, minHeight: 540)
         .onAppear(perform: loadData)
+        // The user leaves the app to change the default browser or install the
+        // helper script, so returning to the window is exactly when both
+        // prompts should re-evaluate and disappear.
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification)) { _ in
+            // Hop to the next main-actor turn before touching @State.
+            // `didBecomeActive` fires during launch, which can land inside a
+            // SwiftUI view update; mutating state there is undefined
+            // behaviour and logs "Modifying state during view update".
+            Task { @MainActor in
+                checkIfDefault()
+                profileHelperInstalled = ProfileRoutingHelper.isInstalled
+            }
+        }
     }
 
     // MARK: - Background
@@ -83,24 +100,28 @@ struct SettingsView: View {
 
             Spacer()
 
-            Link(destination: URL(string: "https://buymeacoffee.com/bozka")!) {
-                HStack(spacing: 6) {
-                    Image(systemName: "cup.and.saucer.fill")
-                    Text("Buy Me a Coffee")
+            if Capabilities.showsExternalDonationLink {
+                Link(destination: URL(string: "https://buymeacoffee.com/bozka")!) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "cup.and.saucer.fill")
+                        Text("Buy Me a Coffee")
+                    }
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
+                    )
                 }
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
-                )
+                .foregroundStyle(colorScheme == .dark ? .white : .primary)
+            } else {
+                tipMenu
             }
-            .foregroundStyle(colorScheme == .dark ? .white : .primary)
 
             Toggle("", isOn: $routingEngine.isEnabled)
                 .toggleStyle(.switch)
@@ -153,14 +174,16 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("OpenElsewhere isn't routing your links yet")
                     .font(.subheadline.weight(.semibold))
-                Text("Set it as your default link handler so other apps send URLs through it.")
+                Text(Capabilities.canSetDefaultBrowser
+                     ? "Set it as your default link handler so other apps send URLs through it."
+                     : "In System Settings, choose OpenElsewhere under \"Default web browser\".")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            Button("Make it Default") {
+            Button(Capabilities.canSetDefaultBrowser ? "Make it Default" : "Open System Settings") {
                 setAsDefaultBrowser()
             }
             .buttonStyle(.borderedProminent)
@@ -177,13 +200,116 @@ struct SettingsView: View {
         )
     }
 
+    // MARK: - Tip jar
+
+    /// App Store build: a StoreKit tip jar in place of the external donation
+    /// link, which App Review restricts for individual developers.
+    private var tipMenu: some View {
+        Menu {
+            if tipJar.products.isEmpty {
+                Text("Loading…")
+            } else {
+                ForEach(tipJar.products, id: \.id) { product in
+                    Button("\(product.displayName) — \(product.displayPrice)") {
+                        Task { await tipJar.purchase(product) }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: tipJar.didTip ? "heart.fill" : "cup.and.saucer.fill")
+                Text(tipJar.didTip ? "Thank you!" : "Leave a Tip")
+            }
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(tipJar.isPurchasing)
+        .foregroundStyle(colorScheme == .dark ? .white : .primary)
+        .task { await tipJar.loadProducts() }
+    }
+
+    // MARK: - Profile-routing setup card
+
+    private var showsProfileHelperCard: Bool {
+        Capabilities.usesScriptBasedProfileRouting && !profileHelperInstalled
+    }
+
+    /// Profile routing needs a helper script the user must install by hand:
+    /// the sandbox forbids the app from writing to its own Application Scripts
+    /// directory, which is exactly what makes that directory a safe escape
+    /// hatch. Plain routing works without it, so this is an enhancement
+    /// prompt, not a blocker.
+    private var profileHelperCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.2.badge.gearshape")
+                    .font(.title2)
+                    .foregroundStyle(accent)
+                    .symbolRenderingMode(.hierarchical)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Enable profile routing")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Links already go to the right browser. To also target a specific profile, macOS needs you to install a small helper script — sandboxed apps aren't allowed to install it themselves.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Copy Script") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(ProfileRoutingHelper.scriptSource,
+                                                   forType: .string)
+                }
+                Button("Open Folder") {
+                    if let dir = ProfileRoutingHelper.scriptsDirectory {
+                        NSWorkspace.shared.open(dir)
+                    }
+                }
+                Button("Check Again") {
+                    profileHelperInstalled = ProfileRoutingHelper.isInstalled
+                }
+                Spacer()
+            }
+            .controlSize(.small)
+
+            Text("Save the script as \(ProfileRoutingHelper.scriptName) in the folder that opens, then make it executable:\nchmod +x \(ProfileRoutingHelper.scriptName)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(accent.opacity(colorScheme == .dark ? 0.12 : 0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(accent.opacity(0.25), lineWidth: 0.5)
+        )
+    }
+
     // MARK: - Automation-permission banner
 
     /// Shown when `BrowserLauncher` recorded an `errAEEventNotPermitted`
     /// (-1743) from AppleScript. Without this banner, denying the one-time
-    /// automation prompt results in links silently falling back to
-    /// `/usr/bin/open` (which re-opens the "Little Arc" popup the AppleScript
-    /// path was designed to avoid) with no user-facing indication of why.
+    /// automation prompt results in links silently falling back to a plain
+    /// LaunchServices open — which re-opens the "Little Arc" popup the
+    /// AppleScript path exists to avoid — with no indication of why.
     private var automationPermissionBanner: some View {
         HStack(spacing: 12) {
             Image(systemName: "lock.shield.fill")
@@ -337,6 +463,7 @@ struct SettingsView: View {
         browsers = BrowserDiscovery.shared.installedBrowsers()
         allApps = BrowserDiscovery.shared.installedApps()
         checkIfDefault()
+        profileHelperInstalled = ProfileRoutingHelper.isInstalled
         // Warm profile cache for default browser.
         _ = profiles(for: routingEngine.defaultBrowserBundleID)
     }
@@ -353,7 +480,18 @@ struct SettingsView: View {
     }
 
     private func setAsDefaultBrowser() {
-        // Use the modern NSWorkspace API (macOS 14+). LaunchServices'
+        // Apple has not extended runtime default-handler APIs to sandboxed
+        // apps, so the App Store build cannot do this itself. Open the
+        // relevant System Settings pane instead — opening a URL is legal in
+        // the sandbox, so the user still lands one click from the control.
+        guard Capabilities.canSetDefaultBrowser else {
+            if let settingsURL = URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension") {
+                NSWorkspace.shared.open(settingsURL)
+            }
+            return
+        }
+
+        // Use the modern NSWorkspace API. LaunchServices'
         // LSSetDefaultHandlerForURLScheme is deprecated since macOS 12 and
         // may silently no-op on future OS versions.
         let appURL = Bundle.main.bundleURL
