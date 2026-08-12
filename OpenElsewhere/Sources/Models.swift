@@ -32,4 +32,15 @@ struct AppInfo: Identifiable, Hashable {
     static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
         lhs.bundleID == rhs.bundleID
     }
+
+    /// Finder's display name for an app bundle, minus the extension.
+    ///
+    /// `FileManager.displayName` honours "Show all filename extensions", so
+    /// for users who have that switched on it returns "Slack.app" — which
+    /// then reads as "Links from Slack.app open in Arc.app". Nothing calls an
+    /// app that, so drop the suffix while keeping the localized name.
+    static func displayName(at url: URL) -> String {
+        let name = FileManager.default.displayName(atPath: url.path)
+        return name.hasSuffix(".app") ? String(name.dropLast(4)) : name
+    }
 }

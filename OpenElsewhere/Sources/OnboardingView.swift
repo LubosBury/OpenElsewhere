@@ -117,9 +117,7 @@ struct OnboardingView: View {
     // MARK: - Pieces
 
     private var appIconTile: some View {
-        Image(nsImage: OEAppIcon.image)
-            .resizable()
-            .frame(width: 44, height: 44)
+        OEAppIconView(size: 44, tint: t.accent)
             .frame(width: 64, height: 64)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -185,11 +183,7 @@ struct OnboardingView: View {
     private func perform(_ step: SetupTask) {
         switch step {
         case .defaultBrowser:
-            if Capabilities.canSetDefaultBrowser {
-                setAsDefaultBrowser()
-            } else {
-                SystemSettings.openDefaultBrowser()
-            }
+            DefaultBrowser.claim { recheckCurrentStep() }
             waitFor(step)
         case .automation:
             automationPermissionDenied = false
@@ -215,7 +209,7 @@ struct OnboardingView: View {
     /// confirm what the app can already see.
     private func recheckCurrentStep() {
         guard let step, handedOff.contains(step) else { return }
-        if step == .defaultBrowser && isHandlingLinks() {
+        if step == .defaultBrowser && DefaultBrowser.isHandlingLinks {
             advance()
         }
         // `.automation` has no queryable state — macOS offers no way to ask
@@ -237,30 +231,9 @@ struct OnboardingView: View {
     }
 
     private func currentConditions() -> SetupConditions {
-        SetupConditions(isHandlingLinks: isHandlingLinks(),
+        SetupConditions(isHandlingLinks: DefaultBrowser.isHandlingLinks,
                         automationPermissionDenied: automationPermissionDenied,
                         profileHelperInstalled: ProfileRoutingHelper.isInstalled,
                         hasRules: !routingEngine.rules.isEmpty)
-    }
-
-    private func isHandlingLinks() -> Bool {
-        guard let httpsURL = URL(string: "https://example.com"),
-              let defaultBrowserURL = NSWorkspace.shared.urlForApplication(toOpen: httpsURL),
-              let defaultBundle = Bundle(url: defaultBrowserURL),
-              let defaultBundleID = defaultBundle.bundleIdentifier else { return false }
-        return defaultBundleID.lowercased() == (Bundle.main.bundleIdentifier ?? "").lowercased()
-    }
-
-    private func setAsDefaultBrowser() {
-        let appURL = Bundle.main.bundleURL
-        for scheme in ["http", "https"] {
-            NSWorkspace.shared.setDefaultApplication(at: appURL,
-                                                     toOpenURLsWithScheme: scheme) { error in
-                if let error {
-                    print("OpenElsewhere: setDefaultApplication(\(scheme)) failed: \(error.localizedDescription)")
-                }
-                Task { @MainActor in recheckCurrentStep() }
-            }
-        }
     }
 }

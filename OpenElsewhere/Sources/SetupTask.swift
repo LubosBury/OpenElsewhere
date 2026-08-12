@@ -163,6 +163,66 @@ extension SetupTask {
     var onboardingCTA: String { stripCTA }
 }
 
+// MARK: - Default-handler check
+
+enum DefaultBrowser {
+
+    /// Whether macOS currently sends `https` links to OpenElsewhere.
+    ///
+    /// Deliberately never opens the resolved app bundle. The obvious
+    /// implementation — resolve the handler URL, then read its
+    /// `bundleIdentifier` — reads a bundle the App Sandbox may not be allowed
+    /// to open: any copy outside `/Applications` (a build directory, a folder
+    /// in the user's home) fails, `Bundle(url:)` returns nil, and the app
+    /// concludes it is not the default *while being exactly that*. That is the
+    /// "still asks me to set the default" report.
+    ///
+    /// Matching the handler URL against LaunchServices' own list of copies of
+    /// our bundle ID answers the same question from the database alone, and
+    /// has the useful side effect of recognising any installed copy — the one
+    /// macOS registered is often not the one running.
+    static var isHandlingLinks: Bool {
+        guard let httpsURL = URL(string: "https://example.com"),
+              let handlerURL = NSWorkspace.shared.urlForApplication(toOpen: httpsURL)
+        else { return false }
+
+        let handler = handlerURL.standardizedFileURL
+        if handler == Bundle.main.bundleURL.standardizedFileURL { return true }
+
+        guard let ownID = Bundle.main.bundleIdentifier else { return false }
+        return NSWorkspace.shared
+            .urlsForApplications(withBundleIdentifier: ownID)
+            .contains { $0.standardizedFileURL == handler }
+    }
+
+    /// Claim the `http`/`https` handler. Only the Developer ID build can:
+    /// Apple has not extended the runtime default-handler APIs to sandboxed
+    /// apps, so the App Store build sends the user to System Settings instead.
+    static func claim(completion: @escaping () -> Void) {
+        guard Capabilities.canSetDefaultBrowser else {
+            SystemSettings.openDefaultBrowser()
+            completion()
+            return
+        }
+
+        // LaunchServices' LSSetDefaultHandlerForURLScheme is deprecated since
+        // macOS 12 and may silently no-op, so use the NSWorkspace API.
+        let appURL = Bundle.main.bundleURL
+        let group = DispatchGroup()
+        for scheme in ["http", "https"] {
+            group.enter()
+            NSWorkspace.shared.setDefaultApplication(at: appURL,
+                                                     toOpenURLsWithScheme: scheme) { error in
+                if let error {
+                    print("OpenElsewhere: setDefaultApplication(\(scheme)) failed: \(error.localizedDescription)")
+                }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main, execute: completion)
+    }
+}
+
 // MARK: - System Settings deep links
 
 enum SystemSettings {

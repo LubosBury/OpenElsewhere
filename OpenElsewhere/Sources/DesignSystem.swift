@@ -582,7 +582,11 @@ struct OEChipMenu<Content: View>: View {
             .oeSurface(t.surfaceControl, border: t.borderHairline, radius: OE.Radius.control)
             .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        // `.borderlessButton` draws its own label and indicator and discards
+        // the chip styling entirely. `.button` + `.plain` is the combination
+        // that renders the label exactly as given, with no bezel.
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
     }
@@ -613,6 +617,31 @@ struct OEMenuRowLabel: View {
 /// The app's own icon, used for the header tile and the empty state.
 enum OEAppIcon {
     static let image: NSImage = NSApplication.shared.applicationIconImage
+
+    /// Xcode writes `CFBundleIconName` when an icon set is compiled into the
+    /// bundle. Without it `applicationIconImage` hands back the generic
+    /// placeholder, which reads as a blank tile.
+    static var isPresent: Bool {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleIconName") != nil
+            || Bundle.main.object(forInfoDictionaryKey: "CFBundleIconFile") != nil
+    }
+}
+
+/// The app mark. Falls back to the vector compass when the bundle has no
+/// compiled icon, so the tile never renders empty.
+struct OEAppIconView: View {
+    var size: CGFloat
+    var tint: Color
+
+    var body: some View {
+        if OEAppIcon.isPresent {
+            Image(nsImage: OEAppIcon.image)
+                .resizable()
+                .frame(width: size, height: size)
+        } else {
+            CompassLogo(size: size, tint: tint)
+        }
+    }
 }
 
 // MARK: - Window access

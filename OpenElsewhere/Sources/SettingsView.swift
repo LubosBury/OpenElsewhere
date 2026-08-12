@@ -114,9 +114,7 @@ struct SettingsView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            Image(nsImage: OEAppIcon.image)
-                .resizable()
-                .frame(width: 30, height: 30)
+            OEAppIconView(size: 30, tint: t.accent)
                 .oeGlow(t.accent.opacity(0.5), css: 20, scale: t.glowScale)
                 .frame(width: 44, height: 44)
                 .background(
@@ -356,9 +354,7 @@ struct SettingsView: View {
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Image(nsImage: OEAppIcon.image)
-                .resizable()
-                .frame(width: 40, height: 40)
+            OEAppIconView(size: 40, tint: t.accent)
                 .opacity(0.5)
                 .oeGlow(t.accent.opacity(0.35), css: 24, scale: t.glowScale)
 
@@ -535,43 +531,11 @@ struct SettingsView: View {
     }
 
     private func checkIfDefault() {
-        guard let httpsURL = URL(string: "https://example.com"),
-              let defaultBrowserURL = NSWorkspace.shared.urlForApplication(toOpen: httpsURL),
-              let defaultBundle = Bundle(url: defaultBrowserURL),
-              let defaultBundleID = defaultBundle.bundleIdentifier else {
-            isHandlingLinks = false
-            return
-        }
-        isHandlingLinks = defaultBundleID.lowercased() == (Bundle.main.bundleIdentifier ?? "").lowercased()
+        isHandlingLinks = DefaultBrowser.isHandlingLinks
     }
 
     private func setAsDefaultBrowser() {
-        // Apple has not extended runtime default-handler APIs to sandboxed
-        // apps, so the App Store build cannot do this itself. Opening a URL is
-        // legal in the sandbox, so the user still lands one click from the
-        // control — which is what the button now says.
-        guard Capabilities.canSetDefaultBrowser else {
-            SystemSettings.openDefaultBrowser()
-            return
-        }
-
-        // LaunchServices' LSSetDefaultHandlerForURLScheme is deprecated since
-        // macOS 12 and may silently no-op, so use the NSWorkspace API.
-        let appURL = Bundle.main.bundleURL
-        let group = DispatchGroup()
-        for scheme in ["http", "https"] {
-            group.enter()
-            NSWorkspace.shared.setDefaultApplication(at: appURL,
-                                                     toOpenURLsWithScheme: scheme) { error in
-                if let error {
-                    print("OpenElsewhere: setDefaultApplication(\(scheme)) failed: \(error.localizedDescription)")
-                }
-                group.leave()
-            }
-        }
-        group.notify(queue: .main) {
-            checkIfDefault()
-        }
+        DefaultBrowser.claim { checkIfDefault() }
     }
 
     private func addEmptyRule() {

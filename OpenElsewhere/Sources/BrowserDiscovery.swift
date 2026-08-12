@@ -14,7 +14,7 @@ class BrowserDiscovery {
                 guard let bundle = Bundle(url: url),
                       let bundleID = bundle.bundleIdentifier,
                       bundleID.lowercased() != ownBundleID.lowercased() else { return nil }
-                let name = FileManager.default.displayName(atPath: url.path)
+                let name = AppInfo.displayName(at: url)
                 // Note: NSWorkspace.icon(forFile:) returns a shared NSImage.
                 // Do NOT mutate its `.size` — that would affect every other
                 // caller holding the same cached instance. Let SwiftUI frame
@@ -54,7 +54,7 @@ class BrowserDiscovery {
                 guard let bundle = Bundle(url: fileURL),
                       let bundleID = bundle.bundleIdentifier else { continue }
 
-                let name = FileManager.default.displayName(atPath: fileURL.path)
+                let name = AppInfo.displayName(at: fileURL)
                 // See note above: do not mutate `.size` on a shared NSImage.
                 let icon = NSWorkspace.shared.icon(forFile: fileURL.path)
 
@@ -76,7 +76,7 @@ class BrowserDiscovery {
 
             apps[bundleID] = AppInfo(
                 bundleID: bundleID,
-                name: FileManager.default.displayName(atPath: bundleURL.path),
+                name: AppInfo.displayName(at: bundleURL),
                 icon: NSWorkspace.shared.icon(forFile: bundleURL.path)
             )
         }
