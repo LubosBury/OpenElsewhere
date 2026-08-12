@@ -614,3 +614,22 @@ struct OEMenuRowLabel: View {
 enum OEAppIcon {
     static let image: NSImage = NSApplication.shared.applicationIconImage
 }
+
+// MARK: - Window access
+
+/// Reaches the `NSWindow` hosting a SwiftUI scene, for the handful of window
+/// properties SwiftUI does not expose.
+struct WindowAccessor: NSViewRepresentable {
+    let configure: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        // `view.window` is nil until the view is in the hierarchy.
+        DispatchQueue.main.async {
+            if let window = view.window { configure(window) }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}

@@ -92,7 +92,7 @@ extension SetupTask {
             // has to explain why it is asking rather than doing.
             Capabilities.canSetDefaultBrowser
                 ? "Set it as your default link handler so other apps send URLs through it."
-                : "macOS won't let a sandboxed app claim this itself — pick OpenElsewhere under \"Default web browser\"."
+                : "macOS won't let a sandboxed app claim this itself — in Desktop & Dock, pick OpenElsewhere under \"Default web browser\"."
         case .automation:
             "Without automation permission, links open a new popup window instead of a tab in the window you already have."
         case .profileHelper:
@@ -104,13 +104,33 @@ extension SetupTask {
 
     /// The App Store build's button never sets the default — it opens System
     /// Settings. Only the Developer ID build gets to promise otherwise.
+    ///
+    /// It names the destination pane rather than saying "System Settings":
+    /// that app has thirty panes and "Default web browser" is buried near the
+    /// bottom of a long one, so the generic label left people stranded.
     var stripCTA: String {
         switch self {
         case .defaultBrowser:
-            Capabilities.canSetDefaultBrowser ? "Make it Default" : "Open System Settings"
+            Capabilities.canSetDefaultBrowser ? "Make it Default" : "Open Desktop & Dock"
         case .automation: "Open Privacy Settings"
         case .profileHelper: "Show me how"
         case .firstRule: "Add a rule"
+        }
+    }
+
+    /// Shown once the CTA has handed the user off to System Settings. Neither
+    /// pane opens scrolled to the row that matters, and the app cannot scroll
+    /// it for them, so the follow-up spells out what to look for.
+    var followUpInstruction: String? {
+        switch self {
+        case .defaultBrowser:
+            Capabilities.canSetDefaultBrowser
+                ? "Confirm the change when macOS asks."
+                : "Scroll to the bottom of Desktop & Dock. Under \"Default web browser\", choose OpenElsewhere."
+        case .automation:
+            "Open Privacy & Security → Automation, find OpenElsewhere, and switch on the browsers you use."
+        case .profileHelper, .firstRule:
+            nil
         }
     }
 
@@ -128,7 +148,9 @@ extension SetupTask {
     var onboardingBody: String {
         switch self {
         case .defaultBrowser:
-            "Other apps need to send URLs here first. macOS asks you to confirm in System Settings."
+            Capabilities.canSetDefaultBrowser
+                ? "Other apps need to send URLs here first. One click, and macOS asks you to confirm."
+                : "Other apps need to send URLs here first. A sandboxed app can't claim that itself, so macOS has you pick it by hand."
         case .automation:
             "So a link becomes a tab in the window you already have, not another popup."
         case .profileHelper:

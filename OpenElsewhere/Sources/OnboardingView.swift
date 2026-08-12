@@ -7,6 +7,13 @@ import SwiftUI
 /// conditions, so anything skipped here is exactly what is still waiting in
 /// Settings afterwards. Nothing is required — every step can be skipped, and
 /// the flow never blocks the app.
+///
+/// Two things shape the interaction. OpenElsewhere is an `LSUIElement` agent,
+/// so once System Settings takes focus there is no Dock icon to click back to:
+/// the window floats above other apps instead of disappearing behind them.
+/// And a step that hands off to System Settings does not advance on the click
+/// — the work happens over there, so the step waits, shows what to look for,
+/// and either detects completion or offers Continue.
 struct OnboardingView: View {
     @EnvironmentObject var routingEngine: RoutingEngine
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
@@ -20,28 +27,24 @@ struct OnboardingView: View {
     /// flow under the user's feet the moment they satisfy a condition.
     @State private var steps: [SetupTask] = []
     @State private var index = 0
+    /// Steps whose CTA has been used and which are now waiting on the user to
+    /// finish the job in System Settings.
+    @State private var handedOff: Set<SetupTask> = []
+    /// Quitting closes the window too, and that must not be mistaken for the
+    /// user dismissing onboarding — otherwise quitting from the menu bar on
+    /// first launch means never seeing it again.
+    @State private var isTerminating = false
 
     private var t: OETheme { OETheme.resolve(scheme) }
     private var step: SetupTask? { steps.indices.contains(index) ? steps[index] : nil }
+    private var isWaiting: Bool { step.map { handedOff.contains($0) } ?? false }
 
     var body: some View {
         ZStack {
             OEBackground(theme: t)
 
             VStack(spacing: 12) {
-                Image(nsImage: OEAppIcon.image)
-                    .resizable()
-                    .frame(width: 44, height: 44)
-                    .frame(width: 64, height: 64)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(t.accentLine, lineWidth: OE.hairline)
-                    )
-                    .oeGlow(t.accentLine, css: 34, scale: t.glowScale)
+                appIconTile
 
                 if let step {
                     Text(step.onboardingTitle)
@@ -56,29 +59,24 @@ struct OnboardingView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: 300)
 
-                    Button(step.onboardingCTA) { perform(step) }
-                        .buttonStyle(OEFilledButtonStyle(font: OEFont.buttonLarge,
-                                                         fontSize: 12,
-                                                         horizontalPadding: 20,
-                                                         verticalPadding: 10))
-                        .padding(.top, 8)
+                    if isWaiting, let instruction = step.followUpInstruction {
+                        followUp(instruction)
+                    }
 
-                    Button("Skip for now") { advance() }
+                    Button(isWaiting ? "Continue" : step.onboardingCTA) {
+                        isWaiting ? advance() : perform(step)
+                    }
+                    .buttonStyle(OEFilledButtonStyle(font: OEFont.buttonLarge,
+                                                     fontSize: 12,
+                                                     horizontalPadding: 20,
+                                                     verticalPadding: 10))
+                    .padding(.top, 8)
+
+                    Button(isWaiting ? "Skip this step" : "Skip for now") { advance() }
                         .buttonStyle(OETextButtonStyle())
                 }
 
-                if steps.count > 1 {
-                    HStack(spacing: 6) {
-                        ForEach(steps.indices, id: \.self) { i in
-                            Circle()
-                                .fill(i == index ? t.accent : t.borderHairline)
-                                .frame(width: 6, height: 6)
-                                .oeGlow(i == index ? t.accent : .clear, css: 14, scale: t.glowScale)
-                        }
-                    }
-                    .padding(.top, 6)
-                    .animation(OE.easeBase, value: index)
-                }
+                if steps.count > 1 { progressDots }
             }
             .padding(.top, 34)
             .padding(.horizontal, 30)
@@ -87,6 +85,10 @@ struct OnboardingView: View {
         }
         .frame(width: OE.Size.onboardingWidth)
         .tint(t.accent)
+        .overlay(alignment: .topLeading) { backButton }
+        // Stay on top of System Settings. An agent app has no Dock icon, so a
+        // window that falls behind is a window the user cannot get back to.
+        .background(WindowAccessor { $0.level = .floating })
         .onAppear {
             steps = SetupTask.onboardingSteps(currentConditions())
             // Nothing left to ask for — a first run on a Mac that is already
@@ -94,10 +96,88 @@ struct OnboardingView: View {
             if steps.isEmpty { finish() }
             NSApp.activate(ignoringOtherApps: true)
         }
+        // Coming back from System Settings is the only moment the outcome of a
+        // handed-off step can be observed.
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { @MainActor in recheckCurrentStep() }
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.willTerminateNotification)) { _ in
+            isTerminating = true
+        }
         // Closing the window with the red button is a decision too. Without
         // this, onboarding would reappear at every launch until the user
         // clicked all the way through it.
-        .onDisappear { hasCompletedOnboarding = true }
+        .onDisappear {
+            if !isTerminating { hasCompletedOnboarding = true }
+        }
+    }
+
+    // MARK: - Pieces
+
+    private var appIconTile: some View {
+        Image(nsImage: OEAppIcon.image)
+            .resizable()
+            .frame(width: 44, height: 44)
+            .frame(width: 64, height: 64)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(t.accentLine, lineWidth: OE.hairline)
+            )
+            .oeGlow(t.accentLine, css: 34, scale: t.glowScale)
+    }
+
+    private func followUp(_ instruction: String) -> some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: "arrow.turn.down.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(t.accent)
+                .padding(.top, 1)
+            Text(instruction)
+                .font(OEFont.rowSubtitle)
+                .foregroundStyle(t.textPrimary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: 300, alignment: .leading)
+        .oeSurface(t.accentSoft, border: t.accentLine, radius: OE.Radius.chip)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    @ViewBuilder
+    private var backButton: some View {
+        if index > 0 {
+            Button {
+                withAnimation(OE.spring) { index -= 1 }
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(OETextButtonStyle())
+            .padding(.leading, 14)
+            .padding(.top, 12)
+            .accessibilityLabel("Back")
+        }
+    }
+
+    private var progressDots: some View {
+        HStack(spacing: 6) {
+            ForEach(steps.indices, id: \.self) { i in
+                Circle()
+                    .fill(i == index ? t.accent : t.borderHairline)
+                    .frame(width: 6, height: 6)
+                    .oeGlow(i == index ? t.accent : .clear, css: 14, scale: t.glowScale)
+            }
+        }
+        .padding(.top, 6)
+        .animation(OE.easeBase, value: index)
     }
 
     // MARK: - Flow
@@ -110,11 +190,11 @@ struct OnboardingView: View {
             } else {
                 SystemSettings.openDefaultBrowser()
             }
-            advance()
+            waitFor(step)
         case .automation:
             automationPermissionDenied = false
             SystemSettings.openAutomation()
-            advance()
+            waitFor(step)
         case .profileHelper:
             advance()
         case .firstRule:
@@ -125,6 +205,22 @@ struct OnboardingView: View {
             openWindow(id: "settings")
             NSApp.activate(ignoringOtherApps: true)
         }
+    }
+
+    private func waitFor(_ step: SetupTask) {
+        withAnimation(OE.spring) { _ = handedOff.insert(step) }
+    }
+
+    /// If the handed-off work is now done, move on without making the user
+    /// confirm what the app can already see.
+    private func recheckCurrentStep() {
+        guard let step, handedOff.contains(step) else { return }
+        if step == .defaultBrowser && isHandlingLinks() {
+            advance()
+        }
+        // `.automation` has no queryable state — macOS offers no way to ask
+        // whether a grant exists without sending an event — so it keeps
+        // showing Continue.
     }
 
     private func advance() {
@@ -163,6 +259,7 @@ struct OnboardingView: View {
                 if let error {
                     print("OpenElsewhere: setDefaultApplication(\(scheme)) failed: \(error.localizedDescription)")
                 }
+                Task { @MainActor in recheckCurrentStep() }
             }
         }
     }
