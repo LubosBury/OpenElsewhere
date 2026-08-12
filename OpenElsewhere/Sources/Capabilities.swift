@@ -32,6 +32,10 @@ enum Capabilities {
     /// executed via `NSUserUnixTask`, which runs outside the sandbox.
     static let usesScriptBasedProfileRouting = true
 
+    /// About-tab identity. Display strings only — no behaviour reads these.
+    static let buildChannelName = "App Store"
+    static let buildChannelDetail = "Sandboxed build · profile routing via helper script"
+
     #else
 
     static let canSetDefaultBrowser = true
@@ -39,6 +43,9 @@ enum Capabilities {
     static let showsExternalDonationLink = true
     static let canPassLaunchArguments = true
     static let usesScriptBasedProfileRouting = false
+
+    static let buildChannelName = "Direct"
+    static let buildChannelDetail = "Notarized build · profiles routed natively"
 
     #endif
 }

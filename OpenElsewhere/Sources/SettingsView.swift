@@ -1,471 +1,537 @@
+import AppKit
 import SwiftUI
 
+/// The Settings window: identity and the master switch in a fixed header,
+/// three tabs below it, and — above whichever tab is showing — at most **one**
+/// setup prompt.
+///
+/// The previous layout could stack a header card, three setup banners, a
+/// picker card and the rules card in one scrolling column. Nothing about
+/// routing changed here; the same state drives a smaller surface.
 struct SettingsView: View {
     @EnvironmentObject var routingEngine: RoutingEngine
+    @StateObject private var tipJar = TipJar()
+    @ObservedObject private var route = SettingsRoute.shared
+
+    @SceneStorage("settingsTab") private var selectedTab: SettingsTab = .rules
+
     @State private var browsers: [AppInfo] = []
     @State private var allApps: [AppInfo] = []
+    @State private var destinations: [Destination] = []
     @State private var isHandlingLinks = false
     @State private var profileHelperInstalled = false
-    @StateObject private var tipJar = TipJar()
+    @State private var showsHelperSheet = false
+    @State private var launchAtLogin = false
 
-    // Observes the permission-denied flag set by BrowserLauncher when macOS
-    // returns `errAEEventNotPermitted` from an AppleScript event. Updates
-    // reactively so the banner appears / disappears without a reopen.
+    /// Set by `BrowserLauncher` when macOS returns `errAEEventNotPermitted`
+    /// from an AppleScript event, so the prompt appears without a reopen.
     @AppStorage(BrowserLauncher.automationDeniedDefaultsKey) private var automationPermissionDenied = false
 
-    // Cache: bundleID -> profiles, computed on demand.
-    @State private var profileCache: [String: [BrowserProfile]] = [:]
+    @Environment(\.colorScheme) private var scheme
+    private var t: OETheme { OETheme.resolve(scheme) }
 
-    // Accent: light blue in light mode, deeper blue in dark mode.
-    @Environment(\.colorScheme) private var colorScheme
-    private var accent: Color {
-        colorScheme == .dark
-            ? Color(red: 0.45, green: 0.68, blue: 1.0)
-            : Color(red: 0.2, green: 0.45, blue: 0.95)
+    private var conditions: SetupConditions {
+        SetupConditions(isHandlingLinks: isHandlingLinks,
+                        automationPermissionDenied: automationPermissionDenied,
+                        profileHelperInstalled: profileHelperInstalled,
+                        hasRules: !routingEngine.rules.isEmpty)
+    }
+
+    private var setupQueue: [SetupTask] { SetupTask.settingsQueue(conditions) }
+
+    private var fallbackLabel: String {
+        DestinationList.label(browserBundleID: routingEngine.defaultBrowserBundleID,
+                              profileDirectoryName: routingEngine.defaultProfileDirectoryName)
     }
 
     var body: some View {
         ZStack {
-            backgroundGradient
+            OEBackground(theme: t)
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    headerCard
-                    defaultBrowserCard
-                    if !isHandlingLinks { statusBanner }
-                    if automationPermissionDenied { automationPermissionBanner }
-                    if showsProfileHelperCard { profileHelperCard }
-                    rulesCard
+            VStack(spacing: 0) {
+                header
+                    .padding(.horizontal, OE.Pad.window)
+                    .padding(.top, 18)
+                    .padding(.bottom, 16)
+
+                tabBar
+                    .padding(.horizontal, OE.Pad.window)
+                    .padding(.bottom, 12)
+
+                OEHairline(theme: t)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let task = setupQueue.first {
+                            setupStrip(task)
+                                .id(task.id)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
+                        switch selectedTab {
+                        case .general: generalTab
+                        case .rules: rulesTab
+                        case .about: aboutTab
+                        }
+                    }
+                    .padding(OE.Pad.window)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: OE.Size.contentMinHeight, alignment: .top)
                 }
-                .padding(24)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
-        .tint(accent)
-        .frame(minWidth: 620, minHeight: 540)
-        .onAppear(perform: loadData)
-        // The user leaves the app to change the default browser or install the
-        // helper script, so returning to the window is exactly when both
-        // prompts should re-evaluate and disappear.
+        .tint(t.accent)
+        .frame(minWidth: OE.Size.settingsMinWidth, minHeight: 500)
+        .animation(OE.spring, value: setupQueue.first)
+        .onAppear {
+            loadData()
+            consumePendingRoute()
+        }
+        .onChange(of: route.wantsNewRule) { _, _ in consumePendingRoute() }
+        // The user leaves the app to change the default browser, grant
+        // automation or install the helper, so returning to the window is
+        // exactly when every condition should re-evaluate.
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
-            // Hop to the next main-actor turn before touching @State.
+            // Hop to the next main-actor turn before touching @State:
             // `didBecomeActive` fires during launch, which can land inside a
-            // SwiftUI view update; mutating state there is undefined
-            // behaviour and logs "Modifying state during view update".
+            // SwiftUI view update.
             Task { @MainActor in
                 checkIfDefault()
                 profileHelperInstalled = ProfileRoutingHelper.isInstalled
+                launchAtLogin = LaunchAtLogin.isEnabled
+            }
+        }
+        .sheet(isPresented: $showsHelperSheet) {
+            HelperScriptSheet(isInstalled: $profileHelperInstalled) {
+                showsHelperSheet = false
             }
         }
     }
 
-    // MARK: - Background
+    // MARK: - Header
 
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: colorScheme == .dark
-                ? [Color(red: 0.05, green: 0.08, blue: 0.18),
-                   Color(red: 0.08, green: 0.12, blue: 0.28)]
-                : [Color(red: 0.88, green: 0.93, blue: 1.0),
-                   Color(red: 0.95, green: 0.97, blue: 1.0)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-    }
-
-    // MARK: - Header card
-
-    private var headerCard: some View {
-        HStack(spacing: 16) {
-            CompassLogo(size: 48, tint: accent)
-                .padding(10)
+    private var header: some View {
+        HStack(spacing: 14) {
+            Image(nsImage: OEAppIcon.image)
+                .resizable()
+                .frame(width: 30, height: 30)
+                .oeGlow(t.accent.opacity(0.5), css: 20, scale: t.glowScale)
+                .frame(width: 44, height: 44)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: OE.Radius.tile, style: .continuous)
                         .fill(.ultraThinMaterial)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(accent.opacity(0.25), lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: OE.Radius.tile, style: .continuous)
+                        .strokeBorder(t.accentLine, lineWidth: OE.hairline)
                 )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("OpenElsewhere")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(OEFont.appName)
+                    .foregroundStyle(t.textPrimary)
                 Text("Send links from any app to the right browser")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .font(OEFont.appSubtitle)
+                    .foregroundStyle(t.textSecondary)
             }
 
-            Spacer()
+            Spacer(minLength: 12)
 
-            if Capabilities.showsExternalDonationLink {
-                Link(destination: URL(string: "https://buymeacoffee.com/bozka")!) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "cup.and.saucer.fill")
-                        Text("Buy Me a Coffee")
-                    }
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
-                    )
-                }
-                .foregroundStyle(colorScheme == .dark ? .white : .primary)
-            } else {
-                tipMenu
+            Toggle(isOn: $routingEngine.isEnabled) {
+                Text(routingEngine.isEnabled ? "Routing" : "Paused")
+                    .font(OEFont.switchLabel)
+                    .tracking(OEFont.labelTracking(10))
+                    .textCase(.uppercase)
+                    .foregroundStyle(routingEngine.isEnabled ? t.accent : t.textTertiary)
             }
-
-            Toggle("", isOn: $routingEngine.isEnabled)
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .controlSize(.large)
-        }
-        .padding(20)
-        .glassCard()
-    }
-
-    // MARK: - Default browser card
-
-    private var defaultBrowserCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label("Default Browser", systemImage: "arrow.triangle.branch")
-                    .font(.headline)
-                Spacer()
-                Text("Fallback when nothing matches")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 10) {
-                browserPicker(selection: $routingEngine.defaultBrowserBundleID)
-                    .frame(maxWidth: .infinity)
-
-                if !profiles(for: routingEngine.defaultBrowserBundleID).isEmpty {
-                    profilePicker(
-                        browserBundleID: routingEngine.defaultBrowserBundleID,
-                        selection: $routingEngine.defaultProfileDirectoryName
-                    )
-                    .frame(width: 170)
-                }
-            }
-        }
-        .padding(20)
-        .glassCard()
-    }
-
-    // MARK: - Status banner (not handling links)
-
-    private var statusBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "bolt.horizontal.circle.fill")
-                .font(.title2)
-                .foregroundStyle(accent)
-                .symbolRenderingMode(.hierarchical)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("OpenElsewhere isn't routing your links yet")
-                    .font(.subheadline.weight(.semibold))
-                Text(Capabilities.canSetDefaultBrowser
-                     ? "Set it as your default link handler so other apps send URLs through it."
-                     : "In System Settings, choose OpenElsewhere under \"Default web browser\".")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            Button(Capabilities.canSetDefaultBrowser ? "Make it Default" : "Open System Settings") {
-                setAsDefaultBrowser()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(accent.opacity(colorScheme == .dark ? 0.18 : 0.12))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(accent.opacity(0.35), lineWidth: 0.5)
-        )
-    }
-
-    // MARK: - Tip jar
-
-    /// App Store build: a StoreKit tip jar in place of the external donation
-    /// link, which App Review restricts for individual developers.
-    private var tipMenu: some View {
-        Menu {
-            if tipJar.products.isEmpty {
-                Text("Loading…")
-            } else {
-                ForEach(tipJar.products, id: \.id) { product in
-                    Button("\(product.displayName) — \(product.displayPrice)") {
-                        Task { await tipJar.purchase(product) }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: tipJar.didTip ? "heart.fill" : "cup.and.saucer.fill")
-                Text(tipJar.didTip ? "Thank you!" : "Leave a Tip")
-            }
-            .font(.caption.weight(.medium))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.yellow.opacity(colorScheme == .dark ? 0.25 : 0.2))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color.yellow.opacity(0.4), lineWidth: 0.5)
-            )
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-        .disabled(tipJar.isPurchasing)
-        .foregroundStyle(colorScheme == .dark ? .white : .primary)
-        .task { await tipJar.loadProducts() }
-    }
-
-    // MARK: - Profile-routing setup card
-
-    private var showsProfileHelperCard: Bool {
-        Capabilities.usesScriptBasedProfileRouting && !profileHelperInstalled
-    }
-
-    /// Profile routing needs a helper script the user must install by hand:
-    /// the sandbox forbids the app from writing to its own Application Scripts
-    /// directory, which is exactly what makes that directory a safe escape
-    /// hatch. Plain routing works without it, so this is an enhancement
-    /// prompt, not a blocker.
-    private var profileHelperCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "person.2.badge.gearshape")
-                    .font(.title2)
-                    .foregroundStyle(accent)
-                    .symbolRenderingMode(.hierarchical)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Enable profile routing")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Links already go to the right browser. To also target a specific profile, macOS needs you to install a small helper script — sandboxed apps aren't allowed to install it themselves.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            HStack(spacing: 8) {
-                Button("Copy Script") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(ProfileRoutingHelper.scriptSource,
-                                                   forType: .string)
-                }
-                Button("Open Folder") {
-                    if let dir = ProfileRoutingHelper.scriptsDirectory {
-                        NSWorkspace.shared.open(dir)
-                    }
-                }
-                Button("Check Again") {
-                    profileHelperInstalled = ProfileRoutingHelper.isInstalled
-                }
-                Spacer()
-            }
-            .controlSize(.small)
-
-            Text("Save the script as \(ProfileRoutingHelper.scriptName) in the folder that opens, then make it executable:\nchmod +x \(ProfileRoutingHelper.scriptName)")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(accent.opacity(colorScheme == .dark ? 0.12 : 0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(accent.opacity(0.25), lineWidth: 0.5)
-        )
-    }
-
-    // MARK: - Automation-permission banner
-
-    /// Shown when `BrowserLauncher` recorded an `errAEEventNotPermitted`
-    /// (-1743) from AppleScript. Without this banner, denying the one-time
-    /// automation prompt results in links silently falling back to a plain
-    /// LaunchServices open — which re-opens the "Little Arc" popup the
-    /// AppleScript path exists to avoid — with no indication of why.
-    private var automationPermissionBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "lock.shield.fill")
-                .font(.title2)
-                .foregroundStyle(.orange)
-                .symbolRenderingMode(.hierarchical)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Automation permission needed")
-                    .font(.subheadline.weight(.semibold))
-                Text("Allow OpenElsewhere to control Arc/Dia so links open as tabs in your existing window instead of popups.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            Button("Open Privacy Settings") {
-                openAutomationSettings()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
-            .controlSize(.regular)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.orange.opacity(colorScheme == .dark ? 0.18 : 0.12))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.orange.opacity(0.35), lineWidth: 0.5)
-        )
-    }
-
-    private func openAutomationSettings() {
-        // Deep-link into System Settings → Privacy & Security → Automation.
-        // If the URL scheme fails (e.g. future macOS changes the anchor),
-        // fall back to the generic Privacy pane.
-        let automationURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
-        let fallbackURL = URL(string: "x-apple.systempreferences:com.apple.preference.security")
-        if let url = automationURL ?? fallbackURL {
-            NSWorkspace.shared.open(url)
+            .toggleStyle(OESwitchStyle())
+            .accessibilityLabel("Route links through OpenElsewhere")
         }
     }
 
-    // MARK: - Rules card
+    // MARK: - Tab bar
 
-    private var rulesCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label("Routing Rules", systemImage: "point.3.filled.connected.trianglepath.dotted")
-                    .font(.headline)
-                Spacer()
+    private var tabBar: some View {
+        HStack(spacing: 2) {
+            ForEach(SettingsTab.allCases) { tab in
+                let active = tab == selectedTab
                 Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                        addEmptyRule()
-                    }
+                    selectedTab = tab
                 } label: {
-                    Label("Add Rule", systemImage: "plus.circle.fill")
+                    Text(tab.title)
+                        .font(OEFont.tab)
+                        .tracking(OEFont.labelTracking(11))
+                        .textCase(.uppercase)
+                        .foregroundStyle(active ? t.textPrimary : t.textTertiary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: OE.Radius.chip, style: .continuous)
+                                .fill(active ? t.surfaceCardRaised : .clear)
+                        )
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(accent)
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(active ? [.isSelected] : [])
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - Setup strip
+
+    /// Exactly one prompt, highest priority first. The hint under the CTA
+    /// tells the user how much is left so a queue of three does not feel
+    /// endless when only one is visible.
+    private func setupStrip(_ task: SetupTask) -> some View {
+        let tone = task.tone
+        return HStack(spacing: 14) {
+            Image(systemName: task.symbol)
+                .font(.system(size: 15))
+                .foregroundStyle(tone.solid(t))
+                .frame(width: 32, height: 32)
+                .oeSurface(tone.tint(t), border: tone.line(t), radius: OE.Radius.chip)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(task.stripTitle)
+                    .font(OEFont.bannerTitle)
+                    .foregroundStyle(t.textPrimary)
+                Text(task.stripBody)
+                    .font(OEFont.bannerBody)
+                    .foregroundStyle(t.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 5) {
+                Button(task.stripCTA) { resolve(task) }
+                    .buttonStyle(OEFilledButtonStyle(tone: tone))
+                    .fixedSize()
+
+                Text(setupQueue.count > 1
+                     ? "\(setupQueue.count - 1) more after this"
+                     : "Last step")
+                    .font(OEFont.hint)
+                    .foregroundStyle(t.textTertiary)
+            }
+        }
+        .padding(.horizontal, OE.Pad.banner)
+        .padding(.vertical, 14)
+        .oeSurface(tone.tint(t), border: tone.line(t), radius: OE.Radius.banner)
+    }
+
+    private func resolve(_ task: SetupTask) {
+        switch task {
+        case .defaultBrowser: setAsDefaultBrowser()
+        case .automation:
+            // Clearing the flag lets the strip advance now; the next blocked
+            // AppleScript event sets it again if permission is still missing.
+            automationPermissionDenied = false
+            SystemSettings.openAutomation()
+        case .profileHelper: showsHelperSheet = true
+        case .firstRule:
+            selectedTab = .rules
+            withAnimation(OE.spring) { addEmptyRule() }
+        }
+    }
+
+    // MARK: - General tab
+
+    private var generalTab: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            OEEyebrow(text: "Fallback", theme: t)
+
+            HStack(spacing: 12) {
+                rowText("Default browser",
+                        "Used when no rule matches the app a link came from.")
+                Spacer(minLength: 8)
+                destinationMenu(
+                    browserBundleID: routingEngine.defaultBrowserBundleID,
+                    profileDirectoryName: routingEngine.defaultProfileDirectoryName
+                ) { destination in
+                    routingEngine.defaultBrowserBundleID = destination.browserBundleID
+                    routingEngine.defaultProfileDirectoryName = destination.profileDirectoryName
+                }
+            }
+            .oeInsetRow(t)
+
+            HStack(spacing: 12) {
+                rowText("Launch at login", "Keep routing after a restart.")
+                Spacer(minLength: 8)
+                Toggle("", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { launchAtLogin = LaunchAtLogin.set($0) }
+                ))
+                .toggleStyle(OESwitchStyle(glows: false, labelGap: 0))
+                .labelsHidden()
+                .accessibilityLabel("Launch at login")
+            }
+            .oeInsetRow(t)
+        }
+    }
+
+    // MARK: - Rules tab
+
+    private var rulesTab: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                OEEyebrow(text: "Routing rules", theme: t)
+                Spacer()
+                Button("+ Add rule") {
+                    withAnimation(OE.spring) { addEmptyRule() }
+                }
+                .buttonStyle(OESoftButtonStyle())
             }
 
             if routingEngine.rules.isEmpty {
                 emptyState
             } else {
-                VStack(spacing: 10) {
-                    ForEach($routingEngine.rules) { $rule in
-                        RuleCard(
-                            rule: $rule,
-                            allApps: allApps,
-                            browsers: browsers,
-                            profiles: profiles(for: rule.targetBrowserBundleID),
-                            accent: accent,
-                            onDelete: {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                    routingEngine.removeRule(id: rule.id)
-                                }
-                            }
-                        )
+                ForEach($routingEngine.rules) { $rule in
+                    ruleRow($rule)
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.95).combined(with: .opacity),
                             removal: .scale(scale: 0.9).combined(with: .opacity)
                         ))
-                    }
                 }
             }
         }
-        .padding(20)
-        .glassCard()
+    }
+
+    /// A rule reads as a sentence — the direction is carried by "Links from …
+    /// open in …", so the old arrow glyph is gone, and the destination menu
+    /// folds browser and profile into one choice.
+    private func ruleRow(_ rule: Binding<RoutingRule>) -> some View {
+        HStack(spacing: 8) {
+            if let icon = DestinationList.appIcon(for: rule.wrappedValue.sourceAppBundleID) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 18, height: 18)
+            }
+
+            Text("Links from")
+                .font(OEFont.sentence)
+                .foregroundStyle(t.textSecondary)
+
+            OEChipMenu(title: DestinationList.appName(for: rule.wrappedValue.sourceAppBundleID),
+                       maxTitleWidth: 150) {
+                ForEach(allApps) { app in
+                    Button {
+                        rule.wrappedValue.sourceAppBundleID = app.bundleID
+                    } label: {
+                        OEMenuRowLabel(name: app.name, icon: app.icon)
+                    }
+                }
+            }
+
+            Text("open in")
+                .font(OEFont.sentence)
+                .foregroundStyle(t.textSecondary)
+
+            destinationMenu(browserBundleID: rule.wrappedValue.targetBrowserBundleID,
+                            profileDirectoryName: rule.wrappedValue.profileDirectoryName) { destination in
+                rule.wrappedValue.targetBrowserBundleID = destination.browserBundleID
+                rule.wrappedValue.profileDirectoryName = destination.profileDirectoryName
+            }
+
+            Spacer(minLength: 4)
+
+            Button {
+                withAnimation(OE.springTight) {
+                    routingEngine.removeRule(id: rule.wrappedValue.id)
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .buttonStyle(OETextButtonStyle(color: t.textTertiary, hoverColor: t.danger))
+            .accessibilityLabel("Delete rule")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .oeSurface(t.surfaceInset, border: t.borderInset, radius: OE.Radius.row)
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "arrow.triangle.branch")
-                .font(.system(size: 32, weight: .light))
-                .foregroundStyle(accent.opacity(0.6))
-                .padding(.top, 8)
+        VStack(spacing: 8) {
+            Image(nsImage: OEAppIcon.image)
+                .resizable()
+                .frame(width: 40, height: 40)
+                .opacity(0.5)
+                .oeGlow(t.accent.opacity(0.35), css: 24, scale: t.glowScale)
+
             Text("No rules yet")
-                .font(.subheadline.weight(.medium))
-            Text("Add a rule to route links from a specific app")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 8)
+                .font(OEFont.bannerTitle)
+                .foregroundStyle(t.textPrimary)
+
+            // Naming the current fallback beats stating the abstraction: the
+            // user can see where links go today, so the offer is concrete.
+            Text("Every link goes to \(fallbackLabel). Add a rule to send links from one app somewhere else.")
+                .font(OEFont.rowSubtitle)
+                .foregroundStyle(t.textSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 280)
+
+            Button("Add your first rule") {
+                withAnimation(OE.spring) { addEmptyRule() }
+            }
+            .buttonStyle(OESoftButtonStyle(glows: true, horizontalPadding: 14, verticalPadding: 8))
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.vertical, 38)
+        .padding(.horizontal, 24)
+        .background(
+            RoundedRectangle(cornerRadius: OE.Radius.row, style: .continuous)
+                .fill(t.surfaceInset)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: OE.Radius.row, style: .continuous)
+                .strokeBorder(t.borderHairline,
+                              style: StrokeStyle(lineWidth: OE.hairline, dash: [4, 3]))
+        )
     }
 
-    // MARK: - Pickers
+    // MARK: - About tab
 
-    private func browserPicker(selection: Binding<String>) -> some View {
-        Picker("", selection: selection) {
-            ForEach(browsers) { browser in
-                HStack {
-                    if let icon = browser.icon {
-                        Image(nsImage: icon).resizable().frame(width: 16, height: 16)
+    private var aboutTab: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                rowText(AppLinks.versionString, Capabilities.buildChannelDetail)
+                Spacer(minLength: 8)
+                Link("Release notes", destination: AppLinks.releaseNotes)
+                    .font(OEFont.button)
+                    .tracking(OEFont.labelTracking(11))
+                    .foregroundStyle(t.accent)
+            }
+            .oeInsetRow(t)
+
+            supportRow
+
+            HStack(spacing: 18) {
+                Link("Privacy", destination: AppLinks.privacy)
+                Link("Source on GitHub", destination: AppLinks.repository)
+                Link("Support", destination: AppLinks.support)
+            }
+            .font(OEFont.link)
+            .foregroundStyle(t.accent)
+            .padding(.horizontal, OE.Pad.rowX)
+            .padding(.top, 2)
+        }
+        // Products are only needed by the tip jar, and only the App Store
+        // build has one. Loading here rather than inside `supportRow` keeps it
+        // to a single request when the row appears after products arrive.
+        .task {
+            guard !Capabilities.showsExternalDonationLink else { return }
+            await tipJar.loadProducts()
+        }
+    }
+
+    /// App Store: a StoreKit tip jar, because App Review restricts donation
+    /// links for individual developers. Developer ID: the external link.
+    @ViewBuilder
+    private var supportRow: some View {
+        if Capabilities.showsExternalDonationLink {
+            HStack(spacing: 12) {
+                rowText("Buy me a coffee", "One-off, no unlocks. Thank you either way.")
+                Spacer(minLength: 8)
+                Link(destination: AppLinks.buyMeACoffee) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "cup.and.saucer.fill")
+                        Text("Buy Me a Coffee")
                     }
-                    Text(browser.name)
+                    .font(OEFont.button)
+                    .foregroundStyle(t.textPrimary)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .oeSurface(t.sponsorSoft, border: t.sponsorLine, radius: 9)
                 }
-                .tag(browser.bundleID)
+                .buttonStyle(.plain)
             }
+            .oeInsetRow(t)
+        } else if !tipJar.products.isEmpty {
+            // Hidden entirely when products fail to load — offline, or before
+            // App Store Connect approves them — rather than showing "Loading…".
+            HStack(spacing: 12) {
+                rowText(tipJar.didTip ? "Thank you — that genuinely helps." : "Leave a tip",
+                        "One-off, no unlocks. Thank you either way.")
+                Spacer(minLength: 8)
+                HStack(spacing: 6) {
+                    ForEach(tipJar.products, id: \.id) { product in
+                        Button(product.displayPrice) {
+                            Task { await tipJar.purchase(product) }
+                        }
+                        .buttonStyle(OEChipButtonStyle(fill: t.sponsorSoft, border: t.sponsorLine))
+                        .accessibilityLabel("\(product.displayName), \(product.displayPrice)")
+                    }
+                }
+                .disabled(tipJar.isPurchasing)
+            }
+            .oeInsetRow(t)
         }
-        .labelsHidden()
     }
 
-    private func profilePicker(browserBundleID: String, selection: Binding<String?>) -> some View {
-        let list = profiles(for: browserBundleID)
-        return Picker("", selection: selection) {
-            Text("Default Profile").tag(String?.none)
-            Divider()
-            ForEach(list) { profile in
-                Text(profile.displayName).tag(String?.some(profile.directoryName))
+    // MARK: - Shared pieces
+
+    private func rowText(_ title: String, _ subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(OEFont.rowTitle)
+                .foregroundStyle(t.textPrimary)
+            Text(subtitle)
+                .font(OEFont.rowSubtitle)
+                .foregroundStyle(t.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func destinationMenu(browserBundleID: String,
+                                 profileDirectoryName: String?,
+                                 onSelect: @escaping (Destination) -> Void) -> some View {
+        let current = DestinationList.match(destinations,
+                                            browserBundleID: browserBundleID,
+                                            profileDirectoryName: profileDirectoryName)
+        return OEChipMenu(title: current?.label
+                          ?? DestinationList.label(browserBundleID: browserBundleID,
+                                                   profileDirectoryName: profileDirectoryName),
+                          icon: current?.icon) {
+            ForEach(destinations) { destination in
+                Button {
+                    onSelect(destination)
+                } label: {
+                    OEMenuRowLabel(name: destination.label,
+                                   icon: destination.profileDirectoryName == nil ? destination.icon : nil)
+                }
             }
         }
-        .labelsHidden()
     }
 
     // MARK: - Data
 
-    private func profiles(for bundleID: String) -> [BrowserProfile] {
-        if let cached = profileCache[bundleID] { return cached }
-        let discovered = ProfileDiscovery.profiles(forBrowser: bundleID)
-        profileCache[bundleID] = discovered
-        return discovered
-    }
-
     private func loadData() {
         browsers = BrowserDiscovery.shared.installedBrowsers()
         allApps = BrowserDiscovery.shared.installedApps()
+        destinations = DestinationList.build(browsers: browsers) {
+            ProfileDiscovery.profiles(forBrowser: $0)
+        }
         checkIfDefault()
         profileHelperInstalled = ProfileRoutingHelper.isInstalled
-        // Warm profile cache for default browser.
-        _ = profiles(for: routingEngine.defaultBrowserBundleID)
+        launchAtLogin = LaunchAtLogin.isEnabled
+    }
+
+    private func consumePendingRoute() {
+        if let tab = route.requestedTab {
+            selectedTab = tab
+            route.requestedTab = nil
+        }
+        if route.wantsNewRule {
+            route.wantsNewRule = false
+            if allApps.isEmpty { loadData() }
+            withAnimation(OE.spring) { addEmptyRule() }
+        }
     }
 
     private func checkIfDefault() {
@@ -481,26 +547,22 @@ struct SettingsView: View {
 
     private func setAsDefaultBrowser() {
         // Apple has not extended runtime default-handler APIs to sandboxed
-        // apps, so the App Store build cannot do this itself. Open the
-        // relevant System Settings pane instead — opening a URL is legal in
-        // the sandbox, so the user still lands one click from the control.
+        // apps, so the App Store build cannot do this itself. Opening a URL is
+        // legal in the sandbox, so the user still lands one click from the
+        // control — which is what the button now says.
         guard Capabilities.canSetDefaultBrowser else {
-            if let settingsURL = URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension") {
-                NSWorkspace.shared.open(settingsURL)
-            }
+            SystemSettings.openDefaultBrowser()
             return
         }
 
-        // Use the modern NSWorkspace API. LaunchServices'
-        // LSSetDefaultHandlerForURLScheme is deprecated since macOS 12 and
-        // may silently no-op on future OS versions.
+        // LaunchServices' LSSetDefaultHandlerForURLScheme is deprecated since
+        // macOS 12 and may silently no-op, so use the NSWorkspace API.
         let appURL = Bundle.main.bundleURL
-
         let group = DispatchGroup()
         for scheme in ["http", "https"] {
             group.enter()
             NSWorkspace.shared.setDefaultApplication(at: appURL,
-                                                    toOpenURLsWithScheme: scheme) { error in
+                                                     toOpenURLsWithScheme: scheme) { error in
                 if let error {
                     print("OpenElsewhere: setDefaultApplication(\(scheme)) failed: \(error.localizedDescription)")
                 }
@@ -516,122 +578,10 @@ struct SettingsView: View {
         let sourceApp = allApps.first(where: { app in
             !routingEngine.rules.contains(where: { $0.sourceAppBundleID == app.bundleID })
         })?.bundleID ?? allApps.first?.bundleID ?? ""
-        let targetBrowser = browsers.first?.bundleID ?? "com.apple.Safari"
         routingEngine.addRule(
             sourceAppBundleID: sourceApp,
-            targetBrowserBundleID: targetBrowser,
-            profileDirectoryName: nil
+            targetBrowserBundleID: routingEngine.defaultBrowserBundleID,
+            profileDirectoryName: routingEngine.defaultProfileDirectoryName
         )
     }
-}
-
-// MARK: - Rule Card
-
-struct RuleCard: View {
-    @Binding var rule: RoutingRule
-    let allApps: [AppInfo]
-    let browsers: [AppInfo]
-    let profiles: [BrowserProfile]
-    let accent: Color
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            // Source app
-            Picker("", selection: $rule.sourceAppBundleID) {
-                ForEach(allApps) { app in
-                    HStack {
-                        if let icon = app.icon {
-                            Image(nsImage: icon).resizable().frame(width: 16, height: 16)
-                        }
-                        Text(app.name)
-                    }
-                    .tag(app.bundleID)
-                }
-            }
-            .labelsHidden()
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
-
-            Image(systemName: "arrow.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(accent.opacity(0.7))
-
-            // Target browser
-            Picker("", selection: $rule.targetBrowserBundleID) {
-                ForEach(browsers) { browser in
-                    HStack {
-                        if let icon = browser.icon {
-                            Image(nsImage: icon).resizable().frame(width: 16, height: 16)
-                        }
-                        Text(browser.name)
-                    }
-                    .tag(browser.bundleID)
-                }
-            }
-            .labelsHidden()
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
-
-            // Profile (if the browser has any)
-            if !profiles.isEmpty {
-                Picker("", selection: $rule.profileDirectoryName) {
-                    Text("Default Profile").tag(String?.none)
-                    Divider()
-                    ForEach(profiles) { profile in
-                        Text(profile.displayName).tag(String?.some(profile.directoryName))
-                    }
-                }
-                .labelsHidden()
-                .controlSize(.large)
-                .frame(width: 150)
-            }
-
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Image(systemName: "trash")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.borderless)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
-        )
-    }
-}
-
-// MARK: - Glass card modifier
-
-private struct GlassCardModifier: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        content
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.regularMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(
-                        colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.05),
-                        lineWidth: 0.5
-                    )
-            )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06),
-                    radius: 20, x: 0, y: 8)
-    }
-}
-
-private extension View {
-    func glassCard() -> some View { modifier(GlassCardModifier()) }
 }
