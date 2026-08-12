@@ -10,13 +10,46 @@ configs:
   Release: release
   ReleaseAppStore: release
 
+# Declared here, not left as hand-made files in xcshareddata: `xcodegen
+# generate` rewrites the project and removes schemes it does not know about,
+# and scripts/build-appstore.sh and build-dmg.sh both invoke
+# `xcodebuild -scheme OpenElsewhere`. Each script passes its own
+# -configuration, so the scheme's archive config is only the Xcode default.
+schemes:
+  OpenElsewhere:
+    build:
+      targets:
+        OpenElsewhere: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+  OpenElsewhere_appstore:
+    build:
+      targets:
+        OpenElsewhere: all
+    run:
+      config: Debug
+    profile:
+      config: ReleaseAppStore
+    analyze:
+      config: Debug
+    archive:
+      config: ReleaseAppStore
+
 targets:
   OpenElsewhere:
     type: application
     platform: macOS
     sources:
       - OpenElsewhere/Sources
-    resources:
+      # XcodeGen has no target-level `resources:` key — an entry there is
+      # silently dropped, which is why the app shipped with no icon. Asset
+      # catalogs listed under `sources` land in the Resources build phase.
       - OpenElsewhere/Resources/Assets.xcassets
     info:
       path: OpenElsewhere/Resources/Info.plist
@@ -41,6 +74,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.openelsewhere.app
         PRODUCT_NAME: OpenElsewhere
+        # Without this, actool compiles the catalog but extracts nothing: an
+        # icon set is only emitted when it is named as *the* app icon.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "26.0"
         SWIFT_VERSION: "5.9"
         INFOPLIST_FILE: OpenElsewhere/Resources/Info.plist

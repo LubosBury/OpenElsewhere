@@ -23,6 +23,7 @@
 		89BB9B2AE57F5563A7B9A4DC /* Capabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B648F5D2210D90D67F1A4E1 /* Capabilities.swift */; };
 		9F752D5C81B1803CE34EF414 /* SettingsRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8629B3D6DB431518511B08A7 /* SettingsRoute.swift */; };
 		B42ED686DA42B9CF53001A28 /* ProfileRoutingHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3154F819A61BBB193FB5D58 /* ProfileRoutingHelper.swift */; };
+		B7780BE550B8DCCD9968431D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9B940F3360E493EF1E8BFB6C /* Assets.xcassets */; };
 		B97875E460B28CC78B68F522 /* BrowserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51FE9FAE2FA94FCAC0744FE3 /* BrowserProfile.swift */; };
 		C598A15907F217EB9568D03D /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57363341694DBEA8459933CB /* MenuBarView.swift */; };
 		D952A5109B521F13C67B114E /* RoutingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */; };
@@ -46,6 +47,7 @@
 		699E6900CDFE204DA58DEC82 /* CompassLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLogo.swift; sourceTree = "<group>"; };
 		6B42153094A795EA71A18B2B /* AppLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLinks.swift; sourceTree = "<group>"; };
 		8629B3D6DB431518511B08A7 /* SettingsRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRoute.swift; sourceTree = "<group>"; };
+		9B940F3360E493EF1E8BFB6C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B7DA00BB47E16C0565A0FCF9 /* TipJar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJar.swift; sourceTree = "<group>"; };
 		C01BDEDDA4103E23D84F3D0C /* SetupTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupTask.swift; sourceTree = "<group>"; };
 		C2B0119C80BF6D201764A5AE /* RoutingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingEngine.swift; sourceTree = "<group>"; };
@@ -88,9 +90,19 @@
 		951C4E0FC879600E6A1B7BB0 = {
 			isa = PBXGroup;
 			children = (
+				B48A4FEBD3BA6B4091B13E5D /* Resources */,
 				5FFB7136613D33F6493FA5DF /* Sources */,
 				FA3A443D66EF0C038C46ECBC /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		B48A4FEBD3BA6B4091B13E5D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				9B940F3360E493EF1E8BFB6C /* Assets.xcassets */,
+			);
+			name = Resources;
+			path = OpenElsewhere/Resources;
 			sourceTree = "<group>";
 		};
 		FA3A443D66EF0C038C46ECBC /* Products */ = {
@@ -109,6 +121,7 @@
 			buildConfigurationList = 64BD698A679303938EF7EE8D /* Build configuration list for PBXNativeTarget "OpenElsewhere" */;
 			buildPhases = (
 				4905C8A27B70F4AFB32F8305 /* Sources */,
+				C6761BFEFDC5280FC8A9F150 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -153,6 +166,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C6761BFEFDC5280FC8A9F150 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7780BE550B8DCCD9968431D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4905C8A27B70F4AFB32F8305 /* Sources */ = {
