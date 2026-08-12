@@ -1,0 +1,19 @@
+:root{
+  /* Literal spacings used in SettingsView — not snapped to a 4px grid. */
+  --space-2:2px; --space-4:4px; --space-6:6px; --space-7:7px; --space-10:10px;
+  --space-12:12px; --space-14:14px; --space-16:16px; --space-20:20px; --space-24:24px;
+
+  --gap-card:20px;        /* VStack(spacing:20) between cards */
+  --pad-card:20px;        /* .padding(20) inside glass cards */
+  --pad-banner:16px;      /* .padding(16) inside banners */
+  --pad-window:24px;      /* .padding(24) scroll content */
+  --pad-row-x:14px; --pad-row-y:10px;   /* RuleCard */
+  --pad-chip-x:12px; --pad-chip-y:7px;  /* Buy Me a Coffee link */
+
+  --radius-chip:10px; --radius-row:12px; --radius-tile:16px;
+  --radius-banner:16px; --radius-card:20px; --radius-pill:999px;
+  --hairline:0.5px;
+
+  --window-min-w:620px; --window-min-h:540px; --window-default:640px;
+  --menu-w:320px;
+}

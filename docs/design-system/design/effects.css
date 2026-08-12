@@ -1,0 +1,24 @@
+:root{
+  /* Liquid Glass: translucent fill + hairline + backdrop blur + soft drop. */
+  --blur-ultra-thin:blur(20px) saturate(160%); /* @kind other */
+  --blur-regular:blur(32px) saturate(180%); /* @kind other */
+  --blur-menu:blur(40px) saturate(150%); /* @kind other */
+
+  --shadow-card:0 8px 20px rgba(0,0,0,0.30);
+  --shadow-card-light:0 8px 20px rgba(10,14,28,0.06);
+  --shadow-row:0 2px 8px rgba(0,0,0,0.18);
+  --shadow-menu:0 16px 48px rgba(0,0,0,0.45);
+
+  /* Neon / glow — the design-system extension of the app's needle glow. */
+  --glow-accent:0 0 24px rgba(115,174,255,0.45);
+  --glow-accent-strong:0 0 8px rgba(115,174,255,0.8),0 0 32px rgba(115,174,255,0.45);
+  --glow-warn:0 0 24px rgba(255,159,10,0.40);
+  --glow-text:0 0 12px rgba(115,174,255,0.55);
+  --glow-inset:inset 0 1px 0 rgba(255,255,255,0.14);
+
+  --sheen:linear-gradient(180deg,rgba(255,255,255,0.14) 0%,rgba(255,255,255,0.02) 42%,rgba(255,255,255,0) 100%); /* @kind other */
+
+  --ease-spring:cubic-bezier(0.34,1.36,0.64,1); /* @kind other */ /* .spring(response:0.4,damping:0.8) */
+  --ease-out:cubic-bezier(0.2,0.8,0.2,1); /* @kind other */
+  --dur-fast:120ms; /* @kind other */ --dur-base:200ms; /* @kind other */ --dur-spring:400ms; /* @kind other */
+}

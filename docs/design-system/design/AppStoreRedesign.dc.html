@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="OpenElsewhere — App Store redesign" description="Simplified sandboxed-build UI: tabbed settings, one setup strip at a time, sentence-style rules, first-run onboarding, menu-bar panel." -->
+<helmet>
+<script src="./ds-base.js"></script>
+<style>html,body{margin:0;padding:0}*{box-sizing:border-box}
+@keyframes oe-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+select{appearance:none;-webkit-appearance:none}
+select option{background:#141F47;color:#fff}
+a{color:var(--text-link);text-decoration:none}a:hover{color:var(--text-link-hover)}
+body{--accent-o:#73AEFF;--glow:0.55}</style>
+</helmet>
+<div style="min-height:100%;padding:56px 48px 72px;display:flex;flex-direction:column;align-items:center;gap:64px;font-family:var(--font-body);color:var(--text-primary);background:radial-gradient(760px 520px at 14% 12%,rgba(115,174,255,.20),transparent 64%),radial-gradient(680px 460px at 88% 82%,rgba(37,89,201,.24),transparent 70%),var(--bg-app)">
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;max-width:640px">
+<div style="font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--accent-o);text-shadow:var(--glow-text)">App Store build · redesign</div>
+<div style="font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:var(--tracking-display)">One window, one decision at a time</div>
+<div style="font-size:13px;line-height:1.5;color:var(--text-secondary);text-wrap:pretty">Three stacked setup banners become a single strip that advances. Rules read as sentences. The tip jar leaves the header. Sandbox-only actions say what they actually do.</div>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+<div style="font-family:var(--font-label);font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--text-tertiary)">01 — Settings window</div>
+<div style="width:680px;border-radius:var(--radius-card);overflow:hidden;background:var(--surface-card);backdrop-filter:var(--blur-regular);-webkit-backdrop-filter:var(--blur-regular);border:0.5px solid var(--border-hairline);box-shadow:var(--shadow-card),var(--glow-inset)">
+<div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:0.5px solid var(--border-hairline);background:var(--sheen)">
+<span style="width:11px;height:11px;border-radius:999px;background:#FF5F57"></span><span style="width:11px;height:11px;border-radius:999px;background:#FEBC2E"></span><span style="width:11px;height:11px;border-radius:999px;background:#28C840"></span>
+<div style="flex:1;text-align:center;font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label);color:var(--text-secondary);margin-left:-33px">OpenElsewhere</div>
+</div>
+
+<div style="display:flex;align-items:center;gap:14px;padding:18px 20px 0">
+<div style="width:44px;height:44px;border-radius:var(--radius-tile);display:flex;align-items:center;justify-content:center;background:var(--surface-card-raised);border:0.5px solid var(--border-accent);box-shadow:var(--glow-inset)">
+<img src="../../assets/app-icon-128.png" alt="OpenElsewhere" style="width:30px;height:30px;display:block;filter:drop-shadow(0 0 10px rgba(115,174,255,.5))">
+</div>
+<div style="flex:1;min-width:0">
+<div style="font-family:var(--font-heading);font-size:17px;font-weight:600;letter-spacing:var(--tracking-tight)">OpenElsewhere</div>
+<div style="font-size:12px;color:var(--text-secondary)">Send links from any app to the right browser</div>
+</div>
+<div onClick="{{ toggleEnabled }}" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+<sc-if value="{{ enabled }}" hint-placeholder-val="{{ true }}">
+<span style="font-family:var(--font-label);font-size:10px;letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--accent-o)">Routing</span>
+<span style="width:44px;height:26px;border-radius:999px;padding:3px;display:flex;background:var(--accent-o);border:0.5px solid var(--border-hairline);box-shadow:0 0 calc(var(--glow) * 26px) var(--accent-line)">
+<span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transform:translateX(18px);transition:transform var(--dur-base) var(--ease-spring)"></span>
+</span>
+</sc-if>
+<sc-if value="{{ disabled }}" hint-placeholder-val="{{ false }}">
+<span style="font-family:var(--font-label);font-size:10px;letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--text-tertiary)">Paused</span>
+<span style="width:44px;height:26px;border-radius:999px;padding:3px;display:flex;background:var(--surface-control);border:0.5px solid var(--border-hairline)">
+<span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform var(--dur-base) var(--ease-spring)"></span>
+</span>
+</sc-if>
+</div>
+</div>
+
+<div style="display:flex;gap:2px;padding:16px 20px 0">
+<sc-if value="{{ isGeneral }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goGeneral }}" style="cursor:pointer;border:0;background:var(--surface-card-raised);color:var(--text-primary);font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label);text-transform:uppercase;padding:8px 14px;border-radius:var(--radius-chip)">General</button></sc-if>
+<sc-if value="{{ notGeneral }}" hint-placeholder-val="{{ true }}"><button onClick="{{ goGeneral }}" style="cursor:pointer;border:0;background:transparent;color:var(--text-tertiary);font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label);text-transform:uppercase;padding:8px 14px;border-radius:var(--radius-chip)">General</button></sc-if>
+<sc-if value="{{ isRules }}" hint-placeholder-val="{{ true }}"><button onClick="{{ goRules }}" style="cursor:pointer;border:0;background:var(--surface-card-raised);color:var(--text-primary);font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label);text-transform:uppercase;padding:8px 14px;border-radius:var(--radius-chip)">Rules</button></sc-if>
+<sc-if value="{{ notRules }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goRules }}" style="cursor:pointer;border:0;background:transparent;color:var(--text-tertiary);font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label);text-transform:uppercase;padding:8px 14px;border-radius:var(--radius-chip)">Rules</button></sc-if>
+<sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goAbout }}" style="cursor:pointer;border:0;background:var(--surface-card-raised);color:var(--text-primary);font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label);text-transform:uppercase;padding:8px 14px;border-radius:var(--radius-chip)">About</button></sc-if>
+<sc-if value="{{ notAbout }}" hint-placeholder-val="{{ true }}"><button onClick="{{ goAbout }}" style="cursor:pointer;border:0;background:transparent;color:var(--text-tertiary);font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label);text-transform:uppercase;padding:8px 14px;border-radius:var(--radius-chip)">About</button></sc-if>
+</div>
+<div style="height:0.5px;background:var(--border-hairline);margin:12px 0 0"></div>
+
+<div style="padding:18px 20px 22px;display:flex;flex-direction:column;gap:16px;min-height:290px">
+
+<sc-if value="{{ setupInfo }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius-banner);background:var(--accent-soft);border:0.5px solid var(--accent-line);animation:oe-rise var(--dur-spring) var(--ease-spring)">
+<span style="width:32px;height:32px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);border:0.5px solid var(--accent-line);color:var(--accent-o);font-size:15px">{{ setupGlyph }}</span>
+<div style="flex:1;min-width:0">
+<div style="font-size:13px;font-weight:600;letter-spacing:var(--tracking-tight)">{{ setupTitle }}</div>
+<div style="font-size:11.5px;line-height:1.45;color:var(--text-secondary);text-wrap:pretty">{{ setupBody }}</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+<button onClick="{{ resolveSetup }}" style="cursor:pointer;white-space:nowrap;border:0.5px solid var(--accent-line);background:var(--accent-o);color:var(--text-on-accent);font-family:var(--font-label);font-size:11px;font-weight:600;letter-spacing:var(--tracking-label);padding:8px 14px;border-radius:var(--radius-chip);box-shadow:0 0 calc(var(--glow) * 22px) var(--accent-line)">{{ setupCta }}</button>
+<span style="font-size:10px;color:var(--text-tertiary);font-family:var(--font-label)">{{ setupMore }}</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ setupWarn }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius-banner);background:rgba(255,159,10,0.16);border:0.5px solid rgba(255,159,10,0.38);animation:oe-rise var(--dur-spring) var(--ease-spring)">
+<span style="width:32px;height:32px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(255,159,10,0.16);border:0.5px solid rgba(255,159,10,0.38);color:var(--status-warn);font-size:15px">{{ setupGlyph }}</span>
+<div style="flex:1;min-width:0">
+<div style="font-size:13px;font-weight:600;letter-spacing:var(--tracking-tight)">{{ setupTitle }}</div>
+<div style="font-size:11.5px;line-height:1.45;color:var(--text-secondary);text-wrap:pretty">{{ setupBody }}</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+<button onClick="{{ resolveSetup }}" style="cursor:pointer;white-space:nowrap;border:0.5px solid rgba(255,159,10,0.38);background:var(--status-warn);color:var(--navy-1000);font-family:var(--font-label);font-size:11px;font-weight:600;letter-spacing:var(--tracking-label);padding:8px 14px;border-radius:var(--radius-chip);box-shadow:0 0 calc(var(--glow) * 22px) rgba(255,159,10,0.38)">{{ setupCta }}</button>
+<span style="font-size:10px;color:var(--text-tertiary);font-family:var(--font-label)">{{ setupMore }}</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isGeneral }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-family:var(--font-label);font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--text-tertiary)">Fallback</div>
+<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--radius-row);background:var(--surface-inset);border:0.5px solid var(--border-inset)">
+<div style="flex:1">
+<div style="font-size:13px;font-weight:500">Default browser</div>
+<div style="font-size:11.5px;color:var(--text-secondary)">Used when no rule matches the app a link came from.</div>
+</div>
+<select value="{{ fallback }}" onChange="{{ setFallback }}" style="font-family:var(--font-body);font-size:12.5px;color:var(--text-primary);background:var(--surface-control);border:0.5px solid var(--border-hairline);border-radius:var(--radius-chip);padding:8px 26px 8px 12px;cursor:pointer">
+<sc-for list="{{ destinations }}" as="d" hint-placeholder-count="3"><option value="{{ d }}">{{ d }}</option></sc-for>
+</select>
+</div>
+<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--radius-row);background:var(--surface-inset);border:0.5px solid var(--border-inset)">
+<div style="flex:1">
+<div style="font-size:13px;font-weight:500">Launch at login</div>
+<div style="font-size:11.5px;color:var(--text-secondary)">Keep routing after a restart.</div>
+</div>
+<sc-if value="{{ login }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ toggleLogin }}" style="cursor:pointer;width:44px;height:26px;border-radius:999px;padding:3px;display:flex;background:var(--accent-o);border:0.5px solid var(--border-hairline)">
+<span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transform:translateX(18px);transition:transform var(--dur-base) var(--ease-spring)"></span>
+</div>
+</sc-if>
+<sc-if value="{{ noLogin }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ toggleLogin }}" style="cursor:pointer;width:44px;height:26px;border-radius:999px;padding:3px;display:flex;background:var(--surface-control);border:0.5px solid var(--border-hairline)">
+<span style="width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform var(--dur-base) var(--ease-spring)"></span>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRules }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:12px">
+<div style="flex:1;font-family:var(--font-label);font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--text-tertiary)">Routing rules</div>
+<button onClick="{{ addRule }}" style="cursor:pointer;border:0.5px solid var(--border-accent);background:var(--accent-soft);color:var(--accent-o);font-family:var(--font-label);font-size:11px;font-weight:600;letter-spacing:var(--tracking-label);padding:7px 13px;border-radius:var(--radius-chip)">+ Add rule</button>
+</div>
+<sc-for list="{{ rules }}" as="rule" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:var(--radius-row);background:var(--surface-inset);border:0.5px solid var(--border-inset);font-size:13px">
+<span style="width:24px;height:24px;flex:none;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--font-label);font-size:11px;font-weight:600;color:var(--accent-o);background:var(--accent-soft);border:0.5px solid var(--accent-line)">{{ rule.sourceInitial }}</span>
+<span style="color:var(--text-secondary)">Links from</span>
+<select value="{{ rule.source }}" onChange="{{ rule.onSource }}" style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text-primary);background:var(--surface-control);border:0.5px solid var(--border-hairline);border-radius:8px;padding:5px 10px;cursor:pointer">
+<sc-for list="{{ apps }}" as="a" hint-placeholder-count="3"><option value="{{ a }}">{{ a }}</option></sc-for>
+</select>
+<span style="color:var(--text-secondary)">open in</span>
+<select value="{{ rule.dest }}" onChange="{{ rule.onDest }}" style="font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text-primary);background:var(--surface-control);border:0.5px solid var(--border-hairline);border-radius:8px;padding:5px 10px;cursor:pointer">
+<sc-for list="{{ destinations }}" as="d" hint-placeholder-count="3"><option value="{{ d }}">{{ d }}</option></sc-for>
+</select>
+<span style="flex:1"></span>
+<button onClick="{{ rule.onDelete }}" style="cursor:pointer;border:0;background:transparent;color:var(--text-tertiary);font-size:14px;line-height:1;padding:6px;border-radius:7px" style-hover="{background:'rgba(255,107,107,0.14)',color:'var(--status-danger)'}">✕</button>
+</div>
+</sc-for>
+<sc-if value="{{ noRules }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:38px 24px;border-radius:var(--radius-row);border:0.5px dashed var(--border-hairline);background:var(--surface-inset)">
+<img src="../../assets/app-icon-128.png" alt="" style="width:40px;height:40px;opacity:.5;filter:grayscale(.3) drop-shadow(0 0 12px rgba(115,174,255,.35))">
+<div style="font-size:13px;font-weight:600">No rules yet</div>
+<div style="font-size:11.5px;color:var(--text-secondary);text-align:center;max-width:280px;text-wrap:pretty">Every link goes to {{ fallback }}. Add a rule to send links from one app somewhere else.</div>
+<button onClick="{{ addRule }}" style="cursor:pointer;margin-top:4px;border:0.5px solid var(--border-accent);background:var(--accent-soft);color:var(--accent-o);font-family:var(--font-label);font-size:11px;font-weight:600;letter-spacing:var(--tracking-label);padding:8px 14px;border-radius:var(--radius-chip);box-shadow:0 0 calc(var(--glow) * 20px) var(--accent-line)">Add your first rule</button>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--radius-row);background:var(--surface-inset);border:0.5px solid var(--border-inset)">
+<div style="flex:1"><div style="font-size:13px;font-weight:500">OpenElsewhere 1.2 (App Store)</div><div style="font-size:11.5px;color:var(--text-secondary)">Sandboxed build · profile routing via helper script</div></div>
+<a href="#" style="font-family:var(--font-label);font-size:11px;letter-spacing:var(--tracking-label)">Release notes</a>
+</div>
+<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--radius-row);background:var(--surface-inset);border:0.5px solid var(--border-inset)">
+<div style="flex:1"><div style="font-size:13px;font-weight:500">{{ tipTitle }}</div><div style="font-size:11.5px;color:var(--text-secondary)">One-off, no unlocks. Thank you either way.</div></div>
+<div style="display:flex;gap:6px">
+<sc-for list="{{ tips }}" as="tip" hint-placeholder-count="3">
+<button onClick="{{ tip.onBuy }}" style="cursor:pointer;border:0.5px solid rgba(255,214,10,0.35);background:rgba(255,214,10,0.16);color:var(--text-primary);font-family:var(--font-label);font-size:11px;font-weight:600;padding:7px 11px;border-radius:9px">{{ tip.price }}</button>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;gap:18px;padding:4px 16px;font-size:11.5px">
+<a href="#">Privacy</a><a href="#">Source on GitHub</a><a href="#">Support</a>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+<div style="font-size:11.5px;color:var(--text-tertiary);max-width:680px;text-align:center;text-wrap:pretty">Tabs replace the scrolling stack of cards. The header keeps only identity and the master switch — the tip jar moved to About. Toggle setup states from the Tweaks panel.</div>
+</div>
+
+<div style="display:flex;gap:56px;align-items:flex-start;flex-wrap:wrap;justify-content:center">
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+<div style="font-family:var(--font-label);font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--text-tertiary)">02 — First run</div>
+<div style="width:420px;border-radius:var(--radius-card);overflow:hidden;background:var(--surface-card);backdrop-filter:var(--blur-regular);-webkit-backdrop-filter:var(--blur-regular);border:0.5px solid var(--border-hairline);box-shadow:var(--shadow-card),var(--glow-inset)">
+<div style="height:36px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:0.5px solid var(--border-hairline);background:var(--sheen)">
+<span style="width:10px;height:10px;border-radius:999px;background:#FF5F57"></span><span style="width:10px;height:10px;border-radius:999px;background:#FEBC2E"></span><span style="width:10px;height:10px;border-radius:999px;background:#28C840"></span>
+</div>
+<div style="padding:34px 30px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px">
+<div style="width:64px;height:64px;border-radius:20px;display:flex;align-items:center;justify-content:center;background:var(--surface-card-raised);border:0.5px solid var(--border-accent);box-shadow:0 0 calc(var(--glow) * 34px) var(--accent-line),var(--glow-inset)">
+<img src="../../assets/app-icon-256.png" alt="" style="width:44px;height:44px">
+</div>
+<div style="font-family:var(--font-heading);font-size:18px;font-weight:600;letter-spacing:var(--tracking-tight)">{{ onbTitle }}</div>
+<div style="font-size:12.5px;line-height:1.5;color:var(--text-secondary);max-width:300px;text-wrap:pretty">{{ onbBody }}</div>
+<button onClick="{{ onbNext }}" style="cursor:pointer;margin-top:8px;border:0;background:var(--accent-o);color:var(--text-on-accent);font-family:var(--font-label);font-size:12px;font-weight:600;letter-spacing:var(--tracking-label);padding:10px 20px;border-radius:var(--radius-chip);box-shadow:0 0 calc(var(--glow) * 26px) var(--accent-line)">{{ onbCta }}</button>
+<button onClick="{{ onbSkip }}" style="cursor:pointer;border:0;background:transparent;color:var(--text-tertiary);font-size:11.5px;padding:4px 8px">{{ onbSkipLabel }}</button>
+<div style="display:flex;gap:6px;margin-top:6px">
+<sc-if value="{{ dot0 }}" hint-placeholder-val="{{ true }}"><span style="width:6px;height:6px;border-radius:999px;background:var(--accent-o);box-shadow:0 0 calc(var(--glow) * 14px) var(--accent-o)"></span></sc-if>
+<sc-if value="{{ notDot0 }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:999px;background:var(--border-hairline)"></span></sc-if>
+<sc-if value="{{ dot1 }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:999px;background:var(--accent-o);box-shadow:0 0 calc(var(--glow) * 14px) var(--accent-o)"></span></sc-if>
+<sc-if value="{{ notDot1 }}" hint-placeholder-val="{{ true }}"><span style="width:6px;height:6px;border-radius:999px;background:var(--border-hairline)"></span></sc-if>
+<sc-if value="{{ dot2 }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:999px;background:var(--accent-o);box-shadow:0 0 calc(var(--glow) * 14px) var(--accent-o)"></span></sc-if>
+<sc-if value="{{ notDot2 }}" hint-placeholder-val="{{ true }}"><span style="width:6px;height:6px;border-radius:999px;background:var(--border-hairline)"></span></sc-if>
+</div>
+</div>
+</div>
+<div style="font-size:11.5px;color:var(--text-tertiary);max-width:420px;text-align:center;text-wrap:pretty">The same three tasks, once, in order — so Settings opens clean.</div>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+<div style="font-family:var(--font-label);font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--text-tertiary)">03 — Menu bar</div>
+<div style="width:320px;border-radius:var(--radius-tile);overflow:hidden;padding:6px;background:var(--surface-menu);backdrop-filter:var(--blur-menu);-webkit-backdrop-filter:var(--blur-menu);border:0.5px solid var(--border-hairline);box-shadow:var(--shadow-menu),var(--glow-inset)">
+<div onClick="{{ toggleEnabled }}" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px">
+<span style="flex:1;font-size:13px">Route links</span>
+<sc-if value="{{ enabled }}" hint-placeholder-val="{{ true }}">
+<span style="width:36px;height:22px;border-radius:999px;padding:2.5px;display:flex;background:var(--accent-o);border:0.5px solid var(--border-hairline)">
+<span style="width:17px;height:17px;border-radius:999px;background:#fff;transform:translateX(14px);transition:transform var(--dur-base) var(--ease-spring)"></span>
+</span>
+</sc-if>
+<sc-if value="{{ disabled }}" hint-placeholder-val="{{ false }}">
+<span style="width:36px;height:22px;border-radius:999px;padding:2.5px;display:flex;background:var(--surface-control);border:0.5px solid var(--border-hairline)">
+<span style="width:17px;height:17px;border-radius:999px;background:#fff;transition:transform var(--dur-base) var(--ease-spring)"></span>
+</span>
+</sc-if>
+</div>
+<div style="height:0.5px;background:var(--border-hairline);margin:5px 8px"></div>
+<sc-for list="{{ rules }}" as="rule" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;font-size:12.5px" style-hover="{background:'var(--surface-control)'}">
+<span style="width:18px;height:18px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--font-label);font-size:9px;font-weight:600;color:var(--accent-o);background:var(--accent-soft);border:0.5px solid var(--accent-line)">{{ rule.sourceInitial }}</span>
+<span>{{ rule.source }}</span>
+<span style="color:var(--text-tertiary)">→</span>
+<span style="color:var(--text-secondary)">{{ rule.dest }}</span>
+</div>
+</sc-for>
+<sc-if value="{{ noRules }}" hint-placeholder-val="{{ false }}">
+<div style="padding:10px;font-size:12px;color:var(--text-tertiary)">No rules — everything opens in {{ fallback }}</div>
+</sc-if>
+<div style="height:0.5px;background:var(--border-hairline);margin:5px 8px"></div>
+<div style="display:flex;align-items:center;padding:8px 10px;border-radius:9px;font-size:12.5px;cursor:pointer" style-hover="{background:'var(--surface-control)'}"><span style="flex:1">Settings…</span><span style="color:var(--text-tertiary);font-family:var(--font-label);font-size:11px">⌘,</span></div>
+<div style="display:flex;align-items:center;padding:8px 10px;border-radius:9px;font-size:12.5px;cursor:pointer" style-hover="{background:'var(--surface-control)'}"><span style="flex:1">Quit OpenElsewhere</span><span style="color:var(--text-tertiary);font-family:var(--font-label);font-size:11px">⌘Q</span></div>
+</div>
+<div style="font-size:11.5px;color:var(--text-tertiary);max-width:320px;text-align:center;text-wrap:pretty">Unchanged in structure, restyled to the glass panel and sharing the rule sentence.</div>
+</div>
+
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:1500},&quot;setupPrompts&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;All three pending&quot;,&quot;Automation only&quot;,&quot;None — fully set up&quot;],&quot;default&quot;:&quot;All three pending&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;States&quot;},&quot;glowLevel&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:100,&quot;step&quot;:5,&quot;default&quot;:55,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Look&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#73AEFF&quot;,&quot;#3373F2&quot;,&quot;#32D6A0&quot;,&quot;#A78BFA&quot;],&quot;default&quot;:&quot;#73AEFF&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Look&quot;}}">
+const COLORS={Slack:'#4A154B',Mail:'#2C7BE5',Notion:'#3A3A3A',Messages:'#22C55E',Linear:'#5E6AD2',Obsidian:'#6C31E3',Figma:'#F24E1E'};
+class Component extends DCLogic{
+  state={tab:'rules',enabled:true,login:true,fallback:'Safari',step:0,tipped:false,
+    rules:[{source:'Slack',dest:'Arc · Work'},{source:'Mail',dest:'Google Chrome · Personal'},{source:'Notion',dest:'Safari'}],
+    done:{}};
+  setupItems(){
+    const mode=this.props.setupPrompts??'All three pending';
+    if(mode==='None — fully set up')return[];
+    const all=[
+      {id:'default',glyph:'⚡',hue:'var(--accent-o)',tint:'var(--accent-soft)',line:'var(--accent-line)',title:"OpenElsewhere isn't handling links yet",body:'macOS won\'t let a sandboxed app claim this itself — pick OpenElsewhere under "Default web browser".',cta:'Open System Settings'},
+      {id:'automation',glyph:'🔒',tone:'warn',title:'Let it control Arc and Dia',body:'Without automation permission, links open a new popup window instead of a tab in the window you already have.',cta:'Open Privacy Settings'},
+      {id:'helper',glyph:'⌥',hue:'var(--accent-o)',tint:'var(--accent-soft)',line:'var(--accent-line)',title:'Route to a specific profile',body:'Optional. Profile routing needs a small helper script you install once — the sandbox blocks the app from doing it.',cta:'Show me how'}];
+    const start=mode==='Automation only'?1:0;
+    return all.slice(start).filter(i=>!this.state.done[i.id]);
+  }
+  syncTheme(){
+    const b=document.body;if(!b)return;
+    b.style.setProperty('--accent-o',this.props.accent||'#73AEFF');
+    b.style.setProperty('--glow',String((this.props.glowLevel??55)/100));
+  }
+  componentDidMount(){this.syncTheme();}
+  componentDidUpdate(){this.syncTheme();}
+  renderVals(){
+    const s=this.state;
+    const q=this.setupItems(),cur=q[0];
+    const onb=[{title:'Make it your link handler',body:'Other apps need to send URLs here first. macOS asks you to confirm in System Settings.',cta:'Open System Settings'},
+      {title:'Allow control of your browsers',body:'So a link becomes a tab in the window you already have, not another popup.',cta:'Open Privacy Settings'},
+      {title:'Send your first link somewhere',body:'Pick one app to route differently. You can change it any time.',cta:'Add a rule'}];
+    const step=onb[Math.min(s.step,2)];
+    return{
+      isGeneral:s.tab==='general',isRules:s.tab==='rules',isAbout:s.tab==='about',
+      notGeneral:s.tab!=='general',notRules:s.tab!=='rules',notAbout:s.tab!=='about',
+      goGeneral:()=>this.setState({tab:'general'}),goRules:()=>this.setState({tab:'rules'}),goAbout:()=>this.setState({tab:'about'}),
+      enabled:s.enabled,disabled:!s.enabled,
+      toggleEnabled:()=>this.setState(p=>({enabled:!p.enabled})),
+      login:s.login,noLogin:!s.login,
+      toggleLogin:()=>this.setState(p=>({login:!p.login})),
+      setupInfo:!!cur&&cur.tone!=='warn',setupWarn:!!cur&&cur.tone==='warn',
+      setupTitle:cur&&cur.title,setupBody:cur&&cur.body,setupCta:cur&&cur.cta,setupGlyph:cur&&cur.glyph,
+      setupMore:q.length>1?`${q.length-1} more after this`:'Last step',
+      resolveSetup:()=>cur&&this.setState(p=>({done:{...p.done,[cur.id]:true}})),
+      apps:Object.keys(COLORS),
+      destinations:['Safari','Arc','Arc · Work','Google Chrome','Google Chrome · Personal','Firefox','Dia'],
+      fallback:s.fallback,setFallback:e=>this.setState({fallback:e.target.value}),
+      noRules:s.rules.length===0,
+      rules:s.rules.map((r,i)=>({...r,sourceInitial:r.source[0],
+        onSource:e=>this.setState(p=>({rules:p.rules.map((x,j)=>j===i?{...x,source:e.target.value}:x)})),
+        onDest:e=>this.setState(p=>({rules:p.rules.map((x,j)=>j===i?{...x,dest:e.target.value}:x)})),
+        onDelete:()=>this.setState(p=>({rules:p.rules.filter((x,j)=>j!==i)}))})),
+      addRule:()=>this.setState(p=>{
+        const used=p.rules.map(r=>r.source);
+        const next=Object.keys(COLORS).find(a=>!used.includes(a))||'Slack';
+        return{tab:'rules',rules:[...p.rules,{source:next,dest:'Safari'}]};}),
+      tipTitle:s.tipped?'Thank you — that genuinely helps.':'Leave a tip',
+      tips:['€1.99','€4.99','€9.99'].map(price=>({price,onBuy:()=>this.setState({tipped:true})})),
+      onbTitle:step.title,onbBody:step.body,onbCta:step.cta,
+      onbSkipLabel:s.step<2?'Skip for now':'Start over',
+      onbNext:()=>this.setState(p=>({step:(p.step+1)%3})),
+      onbSkip:()=>this.setState(p=>({step:p.step<2?p.step+1:0})),
+      dot0:s.step===0,notDot0:s.step!==0,dot1:s.step===1,notDot1:s.step!==1,dot2:s.step===2,notDot2:s.step!==2
+    };
+  }
+}
+</script>
+</body>
+</html>

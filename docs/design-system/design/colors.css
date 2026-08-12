@@ -1,0 +1,59 @@
+:root{
+  /* --- Base ramp: OpenElsewhere navy (from the app icon + settings gradient) --- */
+  --navy-1000:#070B1A; --navy-900:#0D142E; --navy-800:#141F47; --navy-700:#1B2559;
+  --navy-600:#22306E; --navy-500:#2C3E8A;
+
+  /* --- Accent blue: SettingsView accent (dark #73AEFF / light #3373F2) --- */
+  --blue-300:#A8CCFF; --blue-200:#73AEFF; --blue-400:#3373F2; --blue-500:#2559C9; --blue-600:#173991;
+
+  /* --- Semantic hues lifted from SwiftUI system colors used in the app --- */
+  --orange-400:#FF9F0A; --orange-500:#FF7A00; --yellow-400:#FFD60A;
+  --red-400:#FF6B6B; --green-400:#32D6A0;
+
+  /* --- Neutrals --- */
+  --white:#FFFFFF; --ink-900:#0A0E1C; --ink-500:#5B6480;
+
+  /* --- Semantic aliases (dark is the canonical theme) --- */
+  --bg-gradient-from:var(--navy-900);
+  --bg-gradient-to:var(--navy-800);
+  --bg-app:linear-gradient(135deg,var(--bg-gradient-from) 0%,var(--bg-gradient-to) 100%);
+
+  --accent:var(--blue-200);
+  --accent-strong:var(--blue-400);
+  --accent-soft:rgba(115,174,255,0.18);
+  --accent-line:rgba(115,174,255,0.35);
+
+  --text-primary:rgba(255,255,255,0.95);
+  --text-secondary:rgba(255,255,255,0.60);
+  --text-tertiary:rgba(255,255,255,0.38);
+  --text-on-accent:var(--navy-1000);
+  --text-link:var(--blue-200);
+  --text-link-hover:var(--blue-300);
+
+  --surface-card:rgba(255,255,255,0.07);
+  --surface-card-raised:rgba(255,255,255,0.10);
+  --surface-inset:rgba(255,255,255,0.05);
+  --surface-control:rgba(255,255,255,0.08);
+  --surface-menu:rgba(18,24,48,0.72);
+
+  --border-hairline:rgba(255,255,255,0.10);
+  --border-inset:rgba(255,255,255,0.08);
+  --border-accent:var(--accent-line);
+
+  --status-info:var(--accent);
+  --status-warn:var(--orange-400);
+  --status-danger:var(--red-400);
+  --status-ok:var(--green-400);
+  --sponsor:var(--yellow-400);
+}
+:root[data-theme="light"]{
+  --bg-gradient-from:#E0EDFF; --bg-gradient-to:#F2F7FF;
+  --accent:var(--blue-400); --accent-strong:var(--blue-500);
+  --accent-soft:rgba(51,115,242,0.12); --accent-line:rgba(51,115,242,0.35);
+  --text-primary:rgba(10,14,28,0.92); --text-secondary:rgba(10,14,28,0.55);
+  --text-tertiary:rgba(10,14,28,0.35); --text-on-accent:#FFFFFF;
+  --surface-card:rgba(255,255,255,0.62); --surface-card-raised:rgba(255,255,255,0.78);
+  --surface-inset:rgba(255,255,255,0.55); --surface-control:rgba(255,255,255,0.70);
+  --surface-menu:rgba(250,252,255,0.82);
+  --border-hairline:rgba(10,14,28,0.05); --border-inset:rgba(10,14,28,0.07);
+}
