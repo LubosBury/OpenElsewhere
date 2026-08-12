@@ -152,6 +152,10 @@ Then fill in **App Information**:
 - **Content Rights:** does not contain third-party content
 - **Age Rating:** answer all "None" → results in 4+
 
+All the user-facing text — subtitle, promotional text, description, keywords,
+what's new — is written and length-checked in
+[Appendix A](#appendix-a--store-listing-copy-paste-ready). Paste from there.
+
 And **Pricing and Availability**:
 
 - **Price:** Free
@@ -163,26 +167,24 @@ And **Pricing and Availability**:
 
 **Your app record → Monetization → In-App Purchases → `+`**
 
-Create three, all of type **Consumable**:
+Create three, all of type **Consumable**. Every field below is within Apple's
+character limits — **Display Name** caps at 30 and **Description** at 45, and
+App Store Connect silently truncates or refuses longer text.
 
-| Product ID | Reference Name | Suggested price |
-|---|---|---|
-| `com.openelsewhere.app.tip.small` | Small Tip | Tier 2 |
-| `com.openelsewhere.app.tip.medium` | Medium Tip | Tier 5 |
-| `com.openelsewhere.app.tip.large` | Large Tip | Tier 10 |
+| Product ID | Reference Name | Display Name | Description (≤45) | Price |
+|---|---|---|---|---|
+| `com.openelsewhere.app.tip.small` | Small Tip | `Small Tip` | `A small thank you. Unlocks nothing.` | Tier 2 |
+| `com.openelsewhere.app.tip.medium` | Medium Tip | `Medium Tip` | `A generous thank you. Unlocks nothing.` | Tier 5 |
+| `com.openelsewhere.app.tip.large` | Large Tip | `Large Tip` | `A very generous tip. Unlocks nothing.` | Tier 10 |
 
-Each one needs:
+Each one also needs:
 
-- **Display Name** and **Description** — user-visible, e.g. *"Support ongoing
-  development of OpenElsewhere. This is a tip; it unlocks nothing."*
-- **Review Screenshot** — a screenshot of your tip-jar UI. Required, and a common
-  cause of IAP rejection when omitted.
-- **Review Notes** — *"Optional tip. Grants no functionality; the app is fully
-  free."*
+- **Review Screenshot** — a screenshot of the tip menu in the app. Required, and
+  a common cause of IAP rejection when omitted.
+- **Review Notes** — `Optional tip. Grants no functionality; the app is fully free.`
 
-> Tell me if you'd rather ship a single tip tier instead of three — it's a
-> one-line change in the implementation, and three separate IAP records is real
-> paperwork.
+> Prefer a single tier? It's a one-line change in `TipJar.productIDs` plus one
+> App Store Connect record instead of three.
 
 IAPs are reviewed alongside your first submission, so they must be in **Ready to
 Submit** state before you submit the build.
@@ -299,14 +301,141 @@ brew install create-dmg
 
 ---
 
+## Appendix A — Store listing copy (paste-ready)
+
+Every length-capped field below has been counted against Apple's limit. Where a
+field is capped, the cap is in the heading and the actual count is noted.
+
+### App Name — 13/30
+
+```
+OpenElsewhere
+```
+
+### Subtitle — 25/30
+
+```
+Right link, right browser
+```
+
+Alternates, if you prefer a different angle:
+
+| Subtitle | Count |
+|---|---|
+| `Per-app browser routing` | 23/30 |
+| `Links open where you want` | 25/30 |
+
+Note the subtitle is indexed for search alongside the name, so the words
+"link" and "browser" are already covered and should **not** be repeated in
+keywords.
+
+### Promotional Text — 154/170
+
+Editable any time **without** a new review, unlike the description. Good place
+to announce things later.
+
+```
+Slack links in Chrome. Mail links in Safari. Set a rule once and every app sends its links exactly where you want — no more copying URLs between browsers.
+```
+
+### Keywords — 98/100
+
+```
+default,url,routing,chromium,profiles,menubar,productivity,tabs,work,switcher,handler,picker,links
+```
+
+> **Deliberately avoids competitor brand names.** A keyword list naming Chrome,
+> Safari, Firefox, Arc, Brave, and Edge scores better on search but is a
+> recognised rejection risk: Apple's metadata rules disallow third-party
+> trademarks you don't own, and keywords are where reviewers look hardest.
+> Brand names inside the *description*, used to describe genuine
+> interoperability, are far safer and are used below.
+>
+> If you want to gamble on the higher-traffic version, this is it (95/100) —
+> but expect a possible metadata rejection:
+> `default,url,routing,chrome,profile,safari,arc,firefox,edge,brave,menubar,productivity,tabs,work`
+
+### Description — ~1,700/4,000
+
+```
+OpenElsewhere sends every link to the browser you actually want.
+
+Set it as your default browser once, then write simple rules: links from Slack open in Chrome, links from Mail open in Safari, and everything else falls back to whatever you choose. No more pasting URLs between browsers.
+
+WHAT IT DOES
+
+• Per-app rules — pick a source app, pick the browser its links should open in
+• Browser profiles — send work links to your work profile and personal links to your personal one, on Chromium-based browsers and Firefox
+• Lives in the menu bar — no Dock icon, nothing in your way
+• Sensible fallback — anything without a rule goes to your chosen default browser
+• One switch to pause routing entirely
+
+WHY
+
+If you keep work and personal browsing separate, macOS gives you exactly one default browser and no say in the matter. OpenElsewhere puts that decision back where it belongs: with the app the link came from.
+
+PRIVACY
+
+OpenElsewhere collects nothing. No analytics, no telemetry, no accounts, and no network requests of its own. Your rules stay on your Mac. The URLs it routes are handed straight to your browser and are never logged or transmitted.
+
+FREE, AND OPEN SOURCE
+
+The complete source is on GitHub. The optional tips inside the app unlock nothing — every feature is free, permanently.
+
+TWO THINGS TO KNOW
+
+App Store apps run sandboxed, so two steps need your hand:
+
+• You set OpenElsewhere as your default browser in System Settings. The app opens the right pane for you.
+• Routing to a specific browser profile needs a small helper script you install once. The app walks you through it, and links still reach the right browser without it.
+```
+
+### What's New — first release
+
+```
+First release.
+
+• Route links from any app to any browser, with per-app rules
+• Target a specific browser profile on Chromium-based browsers and Firefox
+• Arc and Dia links open as a tab in your existing window, not a popup
+• Lives in the menu bar, collects nothing, free and open source
+```
+
+### URLs and copyright
+
+| Field | Value |
+|---|---|
+| Privacy Policy URL | `https://github.com/LubosBury/OpenElsewhere/blob/main/PRIVACY.md` |
+| Support URL | `https://github.com/LubosBury/OpenElsewhere/issues` |
+| Marketing URL | `https://github.com/LubosBury/OpenElsewhere` |
+| Copyright | `2026 Lubos Bury` |
+
+### Screenshot captions
+
+macOS screenshots carry no caption field — whatever text appears must be baked
+into the image, and plain unannotated screenshots are perfectly acceptable.
+Three that tell the story in order:
+
+1. **The settings window with two or three realistic rules** — Slack → Chrome
+   (Work profile), Mail → Safari. This is the whole product in one image; make
+   it screenshot #1, since it's the only one many people see.
+2. **The menu bar popover open**, showing the app is out of the way.
+3. **The rule editor mid-edit**, with the browser picker open and profiles
+   visible.
+
+Use realistic app names, not `Test App 1`. Reviewers and users both read them.
+
+---
+
 ## Checklist
 
 - [ ] 1a. Developer ID Application certificate created
 - [ ] 1c. `.p12` exported and base64-copied
 - [ ] 2. App Store Connect API key created, `.p8` saved to password manager
 - [ ] 3. Bundle ID registered with In-App Purchase enabled
-- [ ] 4. `PRIVACY.md` written and pushed
-- [ ] 5. App record created, name confirmed available
+- [x] 4. `PRIVACY.md` written and pushed — live at
+      `https://github.com/LubosBury/OpenElsewhere/blob/main/PRIVACY.md`
+- [ ] 5. App record created, name confirmed available (copy in Appendix A)
 - [ ] 6. Three consumable IAPs created with review screenshots
 - [ ] 7. Screenshots captured, review notes drafted
 - [ ] 8. Six GitHub secrets added
