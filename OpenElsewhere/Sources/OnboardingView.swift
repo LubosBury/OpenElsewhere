@@ -186,9 +186,12 @@ struct OnboardingView: View {
             DefaultBrowser.claim { recheckCurrentStep() }
             waitFor(step)
         case .automation:
+            // Nothing to open: macOS lists an app under Privacy & Security →
+            // Automation only after it has sent an Apple Event, so the pane
+            // would not contain OpenElsewhere yet. This step just sets the
+            // expectation that the request is coming.
             automationPermissionDenied = false
-            SystemSettings.openAutomation()
-            waitFor(step)
+            advance()
         case .profileHelper:
             advance()
         case .firstRule:

@@ -45,18 +45,35 @@ extension SetupTask {
 
     /// Steps for first-run onboarding.
     ///
-    /// Automation is offered here even though no denial has been recorded yet:
-    /// macOS has no API to ask whether an automation grant exists without
-    /// sending an event, so onboarding guides proactively while the Settings
-    /// strip only ever remediates an observed denial. Profile-helper setup is
-    /// deliberately absent — it is optional, and it is the one item that reads
-    /// as a chore on first launch.
+    /// The automation step is *informational* here, and only appears when a
+    /// browser that needs scripting is installed. Automation permission cannot
+    /// be granted in advance: macOS lists an app under Privacy & Security →
+    /// Automation only once it has actually sent an Apple Event, so sending a
+    /// first-run user to that pane shows them a list their app is not in. All
+    /// onboarding can usefully do is tell them the request is coming.
+    /// Remediation belongs to the Settings strip, which only appears after a
+    /// denial has been recorded — by which point the row exists.
+    ///
+    /// Profile-helper setup is deliberately absent: it is optional, and it is
+    /// the one item that reads as a chore on first launch.
     static func onboardingSteps(_ c: SetupConditions) -> [SetupTask] {
         var steps: [SetupTask] = []
         if !c.isHandlingLinks { steps.append(.defaultBrowser) }
-        steps.append(.automation)
+        if !BrowserLauncher.installedScriptedBrowserNames.isEmpty {
+            steps.append(.automation)
+        }
         if !c.hasRules { steps.append(.firstRule) }
         return steps
+    }
+
+    /// "Arc", "Arc and Dia", or a fallback when none is installed.
+    static var scriptedBrowserPhrase: String {
+        let names = BrowserLauncher.installedScriptedBrowserNames
+        switch names.count {
+        case 0: return "some browsers"
+        case 1: return names[0]
+        default: return names.dropLast().joined(separator: ", ") + " and " + names[names.count - 1]
+        }
     }
 
     // MARK: Presentation
@@ -79,7 +96,7 @@ extension SetupTask {
     var stripTitle: String {
         switch self {
         case .defaultBrowser: "OpenElsewhere isn't handling links yet"
-        case .automation: "Let it control Arc and Dia"
+        case .automation: "Let it control \(Self.scriptedBrowserPhrase)"
         case .profileHelper: "Route to a specific profile"
         case .firstRule: "Send your first link somewhere"
         }
@@ -118,18 +135,16 @@ extension SetupTask {
         }
     }
 
-    /// Shown once the CTA has handed the user off to System Settings. Neither
-    /// pane opens scrolled to the row that matters, and the app cannot scroll
-    /// it for them, so the follow-up spells out what to look for.
+    /// Shown once the CTA has handed the user off to System Settings. The pane
+    /// does not open scrolled to the row that matters and the app cannot
+    /// scroll it for them, so the follow-up spells out what to look for.
     var followUpInstruction: String? {
         switch self {
         case .defaultBrowser:
             Capabilities.canSetDefaultBrowser
                 ? "Confirm the change when macOS asks."
                 : "Scroll to the bottom of Desktop & Dock. Under \"Default web browser\", choose OpenElsewhere."
-        case .automation:
-            "Open Privacy & Security → Automation, find OpenElsewhere, and switch on the browsers you use."
-        case .profileHelper, .firstRule:
+        case .automation, .profileHelper, .firstRule:
             nil
         }
     }
@@ -152,7 +167,7 @@ extension SetupTask {
                 ? "Other apps need to send URLs here first. One click, and macOS asks you to confirm."
                 : "Other apps need to send URLs here first. A sandboxed app can't claim that itself, so macOS has you pick it by hand."
         case .automation:
-            "So a link becomes a tab in the window you already have, not another popup."
+            "The first time a link opens in \(Self.scriptedBrowserPhrase), macOS will ask whether OpenElsewhere may control it. Say yes and the link becomes a tab in the window you already have, not another popup."
         case .profileHelper:
             "Profile routing needs a small helper script you install once."
         case .firstRule:
@@ -160,7 +175,17 @@ extension SetupTask {
         }
     }
 
-    var onboardingCTA: String { stripCTA }
+    /// Mostly the strip's CTA, but the automation step has nothing to hand off
+    /// to during onboarding — the permission does not exist to be granted yet.
+    var onboardingCTA: String {
+        self == .automation ? "Got it" : stripCTA
+    }
+
+    /// Whether the onboarding CTA sends the user to System Settings and so
+    /// needs the wait-and-continue treatment.
+    var onboardingHandsOff: Bool {
+        self == .defaultBrowser
+    }
 }
 
 // MARK: - Default-handler check

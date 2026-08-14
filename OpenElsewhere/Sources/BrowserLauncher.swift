@@ -47,11 +47,24 @@ enum BrowserLauncher {
     /// name is never read from disk, only sourced from this trusted map.
     /// This list must stay in sync with the `temporary-exception.apple-events`
     /// array in `OpenElsewhere-AppStore.entitlements`.
-    private static let knownScriptingNames: [String: String] = [
+    /// `nonisolated` so the setup-prompt copy, which is not main-actor bound,
+    /// can read it. It is an immutable table of `Sendable` values.
+    nonisolated private static let knownScriptingNames: [String: String] = [
         "company.thebrowser.Browser": "Arc",
         "company.thebrowser.dia": "Dia",
         "com.thebrowser.dia": "Dia"
     ]
+
+    /// Display names of the scripted browsers actually installed, deduplicated
+    /// and sorted. Automation permission only ever matters for these, so the
+    /// UI asks about it only when one is present — and can name the ones the
+    /// user actually has instead of guessing.
+    nonisolated static var installedScriptedBrowserNames: [String] {
+        let names = knownScriptingNames.compactMap { bundleID, name in
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil ? name : nil
+        }
+        return Array(Set(names)).sorted()
+    }
 
     static func open(_ url: URL,
                      inBrowser bundleID: String,
