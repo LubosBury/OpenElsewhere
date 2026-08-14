@@ -14,9 +14,12 @@ struct OpenElsewhereApp: App {
             MenuBarView()
                 .environmentObject(routingEngine)
         } label: {
-            // Template-style menu bar icon: a simple compass glyph (SF Symbol
-            // renders cleanly in the menu bar with the correct tint).
-            Image(systemName: "location.north.line")
+            // The fork glyph from the app icon, drawn as a template image so
+            // the menu bar tints it for light/dark and for the highlighted
+            // state. Sized 18 pt at 1x in the asset, which is the menu bar's
+            // own glyph size — no resizing needed.
+            Image("MenuBarIconTemplate")
+                .renderingMode(.template)
         }
         // `.window` rather than `.menu`: the panel shows real app icons and
         // the rule sentence, which NSMenu cannot lay out. It dismisses on

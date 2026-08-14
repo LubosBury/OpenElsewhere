@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1A2757"></stop>
+      <stop offset="1" stop-color="#080E24"></stop>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"></stop>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"></stop>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#73AEFF" flood-opacity="0.6"></feDropShadow>
+    </filter>
+  </defs>
+  <rect x="100" y="88" width="824" height="824" rx="185" fill="url(#tile)"></rect>
+  <rect x="100" y="88" width="824" height="824" rx="185" fill="url(#sheen)"></rect>
+  <rect x="102" y="90" width="820" height="820" rx="184" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="4"></rect>
+  <g transform="translate(512,504) scale(1.7) translate(-256,-338)" stroke="#73AEFF" stroke-width="38" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow)">
+    <path d="M256 452 V336"></path>
+    <path d="M256 336 L168 248" opacity="0.42"></path>
+    <path d="M256 336 L344 248"></path>
+    <circle cx="256" cy="452" r="23.56" fill="#73AEFF" stroke="none" opacity="0.42"></circle>
+    <circle cx="152" cy="232" r="34.96" fill="#73AEFF" stroke="none" opacity="0.42"></circle>
+    <circle cx="360" cy="232" r="34.96" fill="#73AEFF" stroke="none"></circle>
+  </g>
+</svg>
