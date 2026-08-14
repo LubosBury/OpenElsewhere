@@ -616,26 +616,30 @@ struct OEMenuRowLabel: View {
 
 /// The app's own icon, used for the header tile and the empty state.
 enum OEAppIcon {
-    static let image: NSImage = NSApplication.shared.applicationIconImage
-
-    /// Xcode writes `CFBundleIconName` when an icon set is compiled into the
-    /// bundle. Without it `applicationIconImage` hands back the generic
-    /// placeholder, which reads as a blank tile.
-    static var isPresent: Bool {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleIconName") != nil
-            || Bundle.main.object(forInfoDictionaryKey: "CFBundleIconFile") != nil
-    }
+    /// Read straight out of the bundle rather than via
+    /// `NSApplication.applicationIconImage`, which returns the generic
+    /// placeholder — a blank tile — whenever LaunchServices has not caught up
+    /// with the running copy. That happens routinely during development and
+    /// for a freshly installed build, and there is no way to tell the
+    /// placeholder from a real icon after the fact.
+    static let image: NSImage? = {
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let icon = NSImage(contentsOf: url) {
+            return icon
+        }
+        return NSImage(named: "AppIcon")
+    }()
 }
 
-/// The app mark. Falls back to the vector compass when the bundle has no
-/// compiled icon, so the tile never renders empty.
+/// The app mark. Falls back to the vector compass when the bundle carries no
+/// icon, so the tile never renders empty.
 struct OEAppIconView: View {
     var size: CGFloat
     var tint: Color
 
     var body: some View {
-        if OEAppIcon.isPresent {
-            Image(nsImage: OEAppIcon.image)
+        if let icon = OEAppIcon.image {
+            Image(nsImage: icon)
                 .resizable()
                 .frame(width: size, height: size)
         } else {

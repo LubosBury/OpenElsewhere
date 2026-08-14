@@ -27,6 +27,11 @@ schemes:
         OpenElsewhere: all
     run:
       config: Debug
+      # Local StoreKit products. Without this the tip jar has nothing to show
+      # — a build that did not come from the App Store or TestFlight has no
+      # receipt, so Product.products(for:) returns empty and the row hides
+      # itself. Ignored by App Store builds, which use the real products.
+      storeKitConfiguration: OpenElsewhere.storekit
     profile:
       config: Release
     analyze:
@@ -39,6 +44,11 @@ schemes:
         OpenElsewhere: all
     run:
       config: Debug
+      # Local StoreKit products. Without this the tip jar has nothing to show
+      # — a build that did not come from the App Store or TestFlight has no
+      # receipt, so Product.products(for:) returns empty and the row hides
+      # itself. Ignored by App Store builds, which use the real products.
+      storeKitConfiguration: OpenElsewhere.storekit
     profile:
       config: ReleaseAppStore
     analyze:
