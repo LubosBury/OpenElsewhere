@@ -3,7 +3,12 @@ options:
   bundleIdPrefix: com.openelsewhere
   deploymentTarget:
     macOS: "26.0"
-  xcodeVersion: "16.0"
+  # Drives LastUpgradeCheck. Leaving this behind the installed Xcode is what
+  # makes it offer "Update to recommended settings" — an offer that must be
+  # declined, because it rewrites Release's CODE_SIGN_IDENTITY to "Apple
+  # Development" and that channel ships a notarized DMG, which requires
+  # Developer ID. The recommendations worth having are set below instead.
+  xcodeVersion: "26.6"
 
 configs:
   Debug: debug
@@ -77,6 +82,13 @@ targets:
         # Without this, actool compiles the catalog but extracts nothing: an
         # icon set is only emitted when it is named as *the* app icon.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Xcode's recommended settings, adopted here so the spec stays the
+        # source of truth. Its "Switch to Development Signing" item is
+        # deliberately not among them — see xcodeVersion above.
+        DEAD_CODE_STRIPPING: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        STRING_CATALOG_GENERATE_SYMBOLS: YES
         MACOSX_DEPLOYMENT_TARGET: "26.0"
         SWIFT_VERSION: "5.9"
         INFOPLIST_FILE: OpenElsewhere/Resources/Info.plist
